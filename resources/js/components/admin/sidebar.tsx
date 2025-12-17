@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Link, usePage } from '@inertiajs/react';
-import { BarChart, ChevronDown, LayoutDashboard, Map, Settings, UserCog } from 'lucide-react';
+import { BarChart, ChevronDown, LayoutDashboard, Map, Settings, UserCog, Users } from 'lucide-react';
 
 interface User {
     name: string;
@@ -54,6 +54,20 @@ export function Sidebar({ user }: SidebarProps) {
                         >
                             <LayoutDashboard size={18} />
                             <span>Dashboard</span>
+                        </Button>
+                    </Link>
+
+                    <Link href={route('admin.people')} className="w-full">
+                        <Button
+                            variant="ghost"
+                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/people')
+                                    ? 'bg-[#7a1818] text-white shadow-sm'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            <Users size={18} />
+                            <span>People</span>
                         </Button>
                     </Link>
 
