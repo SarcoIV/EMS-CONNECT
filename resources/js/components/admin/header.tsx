@@ -1,66 +1,34 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Separator } from '@/components/ui/separator';
-import { Link } from '@inertiajs/react';
-import { ChevronDown, LayoutDashboard, Settings } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Bell, Menu, Search } from 'lucide-react';
 
-interface User {
-    name: string;
-    email: string;
-}
-
-export function Header({ user }: { user: User }) {
+export function Header() {
     return (
-        <header className="flex h-16 items-center border-b bg-white px-4 md:px-6 dark:border-gray-700 dark:bg-gray-800">
-            <Button variant="outline" size="icon" className="mr-2 md:hidden">
-                <LayoutDashboard size={20} />
+        <header className="sticky top-0 z-20 flex h-16 items-center border-b bg-white px-4 shadow-sm md:px-6">
+            {/* Mobile menu button */}
+            <Button variant="ghost" size="icon" className="mr-3 md:hidden">
+                <Menu size={20} />
             </Button>
-            <div className="flex flex-1 items-center justify-between">
-                <div className="ml-auto flex items-center gap-4">
-                    <Separator orientation="vertical" className="h-8" />
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="flex items-center gap-2">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src="/api/placeholder/32/32" alt={user.name} />
-                                    <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <span className="hidden text-sm font-medium md:inline-flex">{user.name}</span>
-                                <ChevronDown size={16} />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>
-                                <div className="flex flex-col">
-                                    <span>{user.name}</span>
-                                    <span className="text-xs text-gray-500">{user.email}</span>
-                                </div>
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
 
-                            <Link href={route('admin.settings')} className="w-full">
-                                <DropdownMenuItem className="flex w-full cursor-pointer items-center gap-2">
-                                    <Settings size={16} />
-                                    Settings
-                                </DropdownMenuItem>
-                            </Link>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
-                                <Link href={route('auth.logout')} className="flex w-full cursor-pointer">
-                                    Logout
-                                </Link>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+            {/* Search bar */}
+            <div className="flex flex-1 items-center gap-4">
+                <div className="relative hidden w-full max-w-md md:block">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                        type="search"
+                        placeholder="Quick search..."
+                        className="h-9 w-full rounded-full border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-[#7a1818]"
+                    />
                 </div>
+            </div>
+
+            {/* Right side actions */}
+            <div className="flex items-center gap-2">
+                {/* Notifications */}
+                <Button variant="ghost" size="icon" className="relative h-9 w-9 text-slate-600 hover:text-slate-900">
+                    <Bell size={18} />
+                    <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+                </Button>
             </div>
         </header>
     );

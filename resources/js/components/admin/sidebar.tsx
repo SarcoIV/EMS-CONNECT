@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Link, usePage } from '@inertiajs/react';
-import { BarChart, ChevronDown, CreditCard, LayoutDashboard, MessageSquare, Settings, Share, Users } from 'lucide-react';
+import { BarChart, ChevronDown, LayoutDashboard, Map, Settings, UserCog } from 'lucide-react';
 
 interface User {
     name: string;
@@ -27,83 +27,79 @@ export function Sidebar({ user }: SidebarProps) {
     const isActive = (path: string) => url.startsWith(path);
 
     return (
-        <div className="hidden w-64 flex-col border-r bg-white md:flex dark:border-gray-700 dark:bg-gray-800">
+        <div className="hidden w-64 flex-col border-r bg-white md:flex">
             {/* Header with logo */}
-            <div className="flex h-16 items-center border-b px-4 dark:border-gray-700">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Admin Portal</h2>
+            <div className="flex h-16 items-center gap-4 border-b bg-[#7a1818] px-6">
+                <img
+                    src="/images/597486658_1215193403858896_2072558280615266887_n.png"
+                    alt="EMS Connect logo"
+                    className="h-12 w-12 object-contain"
+                />
+                <div className="flex flex-col">
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white">Admin Panel</span>
+                </div>
             </div>
 
             {/* Navigation Menu */}
-            <div className="flex-1 overflow-auto py-4">
-                <nav className="grid items-start gap-1 px-2 text-sm font-medium">
+            <div className="flex-1 overflow-auto py-4 bg-white">
+                <nav className="grid items-start gap-1 px-3 text-sm font-medium">
                     <Link href={route('admin.dashboard')} className="w-full">
                         <Button
-                            variant={isActive('/admin/dashboard') ? 'secondary' : 'ghost'}
-                            className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                            variant="ghost"
+                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/dashboard')
+                                    ? 'bg-[#7a1818] text-white shadow-sm'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
                         >
                             <LayoutDashboard size={18} />
-                            Dashboard
+                            <span>Dashboard</span>
                         </Button>
                     </Link>
 
-                    {/* New navigation items */}
                     <Button
                         variant="ghost"
-                        className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                        className="flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                     >
-                        <Users size={18} />
-                        Users
+                        <Map size={18} />
+                        <span>Live Map</span>
                     </Button>
 
                     <Button
                         variant="ghost"
-                        className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                        className="flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                     >
                         <BarChart size={18} />
-                        Analytics
+                        <span>Incident Reports</span>
                     </Button>
 
                     <Button
                         variant="ghost"
-                        className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                        className="flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                     >
-                        <CreditCard size={18} />
-                        Billing
-                    </Button>
-
-                    <Button
-                        variant="ghost"
-                        className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-                    >
-                        <Share size={18} />
-                        Referral
-                    </Button>
-
-                    <Button
-                        variant="ghost"
-                        className="flex w-full items-center justify-start gap-3 rounded-md px-3 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-                    >
-                        <MessageSquare size={18} />
-                        Feedback
+                        <UserCog size={18} />
+                        <span>Administration</span>
                     </Button>
                 </nav>
             </div>
 
             {/* Profile Section */}
-            <div className="border-t p-4 dark:border-gray-700">
-                <div className="flex items-center gap-3">
-                    <Avatar>
+            <div className="border-t bg-gradient-to-b from-slate-50 to-white p-3">
+                <div className="flex items-center gap-3 rounded-xl bg-white p-2 shadow-sm ring-1 ring-slate-100">
+                    <Avatar className="h-9 w-9 ring-2 ring-slate-100">
                         <AvatarImage src="/api/placeholder/32/32" alt={user.name} />
-                        <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="bg-[#7a1818] text-xs text-white">
+                            {user.name.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{user.email}</span>
+                    <div className="flex flex-1 flex-col overflow-hidden">
+                        <span className="truncate text-sm font-semibold text-slate-900">{user.name}</span>
+                        <span className="truncate text-[11px] text-slate-500">{user.email}</span>
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
-                                <ChevronDown size={16} />
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-700">
+                                <ChevronDown size={14} />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
@@ -117,7 +113,7 @@ export function Sidebar({ user }: SidebarProps) {
                             </Link>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
-                                <Link href={route('auth.logout')} className="flex w-full cursor-pointer">
+                                <Link href={route('auth.logout')} className="flex w-full cursor-pointer text-red-600">
                                     Logout
                                 </Link>
                             </DropdownMenuItem>

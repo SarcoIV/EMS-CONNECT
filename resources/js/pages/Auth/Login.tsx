@@ -60,11 +60,50 @@ export default function Login({ flash }: LoginProps) {
 
     return (
         <>
-            <Head title="Login" />
-            <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6">
-                <Card className="w-full max-w-sm rounded-2xl shadow-xl">
-                    <CardContent className="p-8">
-                        <h1 className="mb-6 text-center text-3xl font-bold text-gray-800">Welcome Back!</h1>
+            <Head title="Login - EMS Connect" />
+            <div className="relative flex min-h-screen items-center justify-center bg-[#f7f2f2] px-4 py-8 overflow-hidden">
+                {/* Animated EMS background accents */}
+                <div className="pointer-events-none absolute inset-0">
+                    <div className="absolute -left-24 top-10 h-48 w-48 rounded-full bg-red-400/20 blur-3xl animate-pulse" />
+                    <div className="absolute bottom-0 right-0 h-64 w-64 translate-x-1/3 translate-y-1/3 rounded-full bg-[#7a1818]/25 blur-3xl" />
+                    <div className="absolute inset-x-0 top-1/3 mx-auto h-40 max-w-xl rounded-full border border-red-200/40 bg-gradient-to-r from-red-100/10 via-transparent to-red-100/10" />
+
+                    {/* Centered EMS watermark on white background */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.03]">
+                        <img
+                            src="/images/597486658_1215193403858896_2072558280615266887_n.png"
+                            alt="EMS watermark"
+                            className="max-h-[520px] w-auto object-contain"
+                        />
+                    </div>
+
+                    {/* Side EMS illustration overlay on background */}
+                    <div className="absolute inset-y-10 right-[-3rem] hidden w-72 opacity-10 sm:block">
+                        <img
+                            src="/images/597486658_1215193403858896_2072558280615266887_n.png"
+                            alt="EMS responders illustration"
+                            className="h-full w-full object-contain transform scale-110"
+                        />
+                    </div>
+                </div>
+
+                <Card className="relative z-10 w-full max-w-md rounded-3xl border border-[#5a1010] bg-[#7a1818] text-red-50 shadow-xl">
+                    <CardContent className="p-8 sm:p-10">
+                        <div className="mb-6 flex flex-col items-center gap-5">
+                            <img
+                                src="/images/597486658_1215193403858896_2072558280615266887_n.png"
+                                alt="EMS Connect logo"
+                                className="h-28 w-28 object-contain"
+                            />
+                            <div className="text-center">
+                                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                                    Welcome Back
+                                </h1>
+                                <p className="mt-1 text-xs sm:text-sm text-red-100">
+                                    Sign in to continue to EMS Connect.
+                                </p>
+                            </div>
+                        </div>
 
                         {/* Show flash messages */}
                         {flashMessage.message && (
@@ -83,12 +122,14 @@ export default function Login({ flash }: LoginProps) {
                         <form onSubmit={handleSubmit} className="space-y-4">
                             {/* Email Field */}
                             <div className="space-y-2">
-                                <Label htmlFor="email">Gmail</Label>
+                                <Label htmlFor="email" className="text-xs font-medium text-red-50">
+                                    Email
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="yourname@gmail.com"
-                                    className="w-full"
+                                    placeholder="you@example.com"
+                                    className="w-full rounded-xl border-red-100/70 bg-white/95 text-sm text-[#2b0b0b] focus-visible:ring-red-200"
                                     value={data.email}
                                     onChange={(e) => setData('email', e.target.value)}
                                 />
@@ -97,12 +138,14 @@ export default function Login({ flash }: LoginProps) {
 
                             {/* Password Field */}
                             <div className="space-y-2">
-                                <Label htmlFor="password">Password</Label>
+                                <Label htmlFor="password" className="text-xs font-medium text-red-50">
+                                    Password
+                                </Label>
                                 <Input
                                     id="password"
                                     type="password"
                                     placeholder="••••••••"
-                                    className="w-full"
+                                    className="w-full rounded-xl border-red-100/70 bg-white/95 text-sm text-[#2b0b0b] focus-visible:ring-red-200"
                                     value={data.password}
                                     onChange={(e) => setData('password', e.target.value)}
                                 />
@@ -110,7 +153,11 @@ export default function Login({ flash }: LoginProps) {
                             </div>
 
                             {/* Submit Button */}
-                            <Button type="submit" className="mt-4 w-full" disabled={processing}>
+                            <Button
+                                type="submit"
+                                className="mt-4 w-full rounded-full border border-transparent bg-white text-sm font-semibold text-[#7a1818] hover:bg-red-50"
+                                disabled={processing}
+                            >
                                 {processing ? 'Logging in...' : 'Login'}
                             </Button>
                         </form>
@@ -121,13 +168,15 @@ export default function Login({ flash }: LoginProps) {
                                 <div className="w-full border-t"></div>
                             </div>
                             <div className="relative flex justify-center text-sm uppercase">
-                                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                                <span className="bg-[#7a1818] px-2 text-xs font-medium uppercase tracking-wide text-red-100">
+                                    Or continue with
+                                </span>
                             </div>
                         </div>
 
                         <Button
                             variant="outline"
-                            className="w-full"
+                            className="w-full rounded-full border border-transparent bg-white text-sm text-[#2b0b0b] hover:bg-red-50"
                             onClick={() => {
                                 window.location.href = route('auth.google');
                             }}
@@ -154,9 +203,12 @@ export default function Login({ flash }: LoginProps) {
                         </Button>
 
                         {/* Signup Link */}
-                        <p className="mt-4 text-center text-sm text-gray-500">
+                        <p className="mt-4 text-center text-xs sm:text-sm text-red-100">
                             Don't have an account?{' '}
-                            <a href={route('auth.register')} className="text-blue-500 hover:underline">
+                            <a
+                                href={route('auth.register')}
+                                className="font-semibold text-white underline-offset-2 hover:underline"
+                            >
                                 Sign up
                             </a>
                         </p>

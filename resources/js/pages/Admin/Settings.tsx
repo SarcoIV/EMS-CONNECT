@@ -54,8 +54,7 @@ export default function AdminSettings({ user, success }: SettingsProps) {
 
             {/* Main Content */}
             <div className="flex flex-1 flex-col overflow-hidden">
-                {/* Pass user data to the Header component */}
-                <Header user={user} />
+                <Header />
 
                 {/* Settings Content */}
                 <main className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-6 dark:bg-gray-900">
