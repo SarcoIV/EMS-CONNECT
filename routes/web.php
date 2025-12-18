@@ -55,11 +55,16 @@ Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMi
 |--------------------------------------------------------------------------
 */
 
+use App\Http\Controllers\Admin\AdministrationController;
+use App\Http\Controllers\Admin\ArchiveController;
+use App\Http\Controllers\Admin\ChatsController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\HospitalDirectoryController;
 use App\Http\Controllers\Admin\IncidentReportsController;
 use App\Http\Controllers\Admin\LiveMapController;
 use App\Http\Controllers\Admin\PeopleController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\UserEditController;
 use App\Http\Middleware\AdminMiddleware;
 
 Route::middleware([AdminMiddleware::class])->group(function () {
@@ -73,6 +78,9 @@ Route::middleware([AdminMiddleware::class])->group(function () {
   // Incident Reports
   Route::get('admin/incident-reports', [IncidentReportsController::class, 'index'])->name('admin.incident-reports');
 
+  // Administration
+  Route::get('admin/administration', [AdministrationController::class, 'index'])->name('admin.administration');
+
   // People
   Route::get('admin/people', [PeopleController::class, 'index'])->name('admin.people');
 
@@ -80,6 +88,18 @@ Route::middleware([AdminMiddleware::class])->group(function () {
   Route::get('admin/settings', [SettingsController::class, 'index'])->name('admin.settings');
   Route::put('admin/settings/profile', [SettingsController::class, 'updateProfile'])->name('admin.settings.updateProfile');
   Route::put('admin/settings/password', [SettingsController::class, 'updatePassword'])->name('admin.settings.updatePassword');
+
+  // User Edit
+  Route::get('admin/user-edit', [UserEditController::class, 'index'])->name('admin.user-edit');
+
+  // Chats
+  Route::get('admin/chats', [ChatsController::class, 'index'])->name('admin.chats');
+
+  // Hospital Directory
+  Route::get('admin/hospital-directory', [HospitalDirectoryController::class, 'index'])->name('admin.hospital-directory');
+
+  // Archive
+  Route::get('admin/archive', [ArchiveController::class, 'index'])->name('admin.archive');
 });
 
 /*

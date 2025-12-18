@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Link, usePage } from '@inertiajs/react';
-import { BarChart, ChevronDown, LayoutDashboard, Map, Settings, UserCog, Users } from 'lucide-react';
+import { Archive, BarChart, ChevronDown, LayoutDashboard, Map, MessageSquare, Settings, UserCog, Users, UserPen, Building2 } from 'lucide-react';
 
 interface User {
     name: string;
@@ -99,13 +99,75 @@ export function Sidebar({ user }: SidebarProps) {
                         </Button>
                     </Link>
 
-                    <Button
-                        variant="ghost"
-                        className="flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                    >
-                        <UserCog size={18} />
-                        <span>Administration</span>
-                    </Button>
+                    <Link href={route('admin.administration')} className="w-full">
+                        <Button
+                            variant="ghost"
+                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/administration')
+                                    ? 'bg-[#7a1818] text-white shadow-sm'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            <UserCog size={18} />
+                            <span>Administration</span>
+                        </Button>
+                    </Link>
+
+                    <Link href={route('admin.user-edit')} className="w-full">
+                        <Button
+                            variant="ghost"
+                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/user-edit')
+                                    ? 'bg-[#7a1818] text-white shadow-sm'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            <UserPen size={18} />
+                            <span>User Edit</span>
+                        </Button>
+                    </Link>
+
+                    <Link href={route('admin.chats')} className="w-full">
+                        <Button
+                            variant="ghost"
+                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/chats')
+                                    ? 'bg-[#7a1818] text-white shadow-sm'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            <MessageSquare size={18} />
+                            <span>Chats</span>
+                        </Button>
+                    </Link>
+
+                    <Link href={route('admin.hospital-directory')} className="w-full">
+                        <Button
+                            variant="ghost"
+                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/hospital-directory')
+                                    ? 'bg-[#7a1818] text-white shadow-sm'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            <Building2 size={18} />
+                            <span>Hospital Directory</span>
+                        </Button>
+                    </Link>
+
+                    <Link href={route('admin.archive')} className="w-full">
+                        <Button
+                            variant="ghost"
+                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/archive')
+                                    ? 'bg-[#7a1818] text-white shadow-sm'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            <Archive size={18} />
+                            <span>Archive</span>
+                        </Button>
+                    </Link>
                 </nav>
             </div>
 
