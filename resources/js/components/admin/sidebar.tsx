@@ -85,13 +85,19 @@ export function Sidebar({ user }: SidebarProps) {
                         </Button>
                     </Link>
 
-                    <Button
-                        variant="ghost"
-                        className="flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                    >
-                        <BarChart size={18} />
-                        <span>Incident Reports</span>
-                    </Button>
+                    <Link href={route('admin.incident-reports')} className="w-full">
+                        <Button
+                            variant="ghost"
+                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/incident-reports')
+                                    ? 'bg-[#7a1818] text-white shadow-sm'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            <BarChart size={18} />
+                            <span>Incident Reports</span>
+                        </Button>
+                    </Link>
 
                     <Button
                         variant="ghost"
