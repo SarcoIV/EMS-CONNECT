@@ -56,6 +56,7 @@ Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMi
 */
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\LiveMapController;
 use App\Http\Controllers\Admin\PeopleController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Middleware\AdminMiddleware;
@@ -64,6 +65,9 @@ Route::middleware([AdminMiddleware::class])->group(function () {
 
   // Dashboard
   Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+
+  // Live Map
+  Route::get('admin/live-map', [LiveMapController::class, 'index'])->name('admin.live-map');
 
   // People
   Route::get('admin/people', [PeopleController::class, 'index'])->name('admin.people');

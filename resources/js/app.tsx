@@ -13,7 +13,23 @@ document.documentElement.classList.remove('dark');
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
-    resolve: (name: string) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob('./pages/**/*.tsx')),
+    resolve: (name: string) => {
+        const pages = import.meta.glob('./pages/**/*.tsx', { eager: false });
+        
+        // First try exact match: Admin/LiveMap -> ./pages/Admin/LiveMap.tsx
+        const exactPath = `./pages/${name}.tsx`;
+        
+        // Then try folder with index: Admin/LiveMap -> ./pages/Admin/LiveMap/index.tsx
+        const folderPath = `./pages/${name}/index.tsx`;
+        
+        // Check which path exists in the glob
+        if (folderPath in pages) {
+            return resolvePageComponent(folderPath, pages);
+        }
+        
+        // Fallback to exact path (or let it throw if not found)
+        return resolvePageComponent(exactPath, pages);
+    },
     setup({ el, App, props }: { el: HTMLElement; App: any; props: any }) {
         const root = createRoot(el);
         root.render(<App {...props} />);

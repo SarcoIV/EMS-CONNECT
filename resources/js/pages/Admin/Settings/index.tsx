@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -8,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useForm } from '@inertiajs/react';
 import { CheckCircle } from 'lucide-react';
-import { useState } from 'react';
 
 interface User {
     name: string;

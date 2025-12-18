@@ -38,3 +38,4 @@ class DriverSeeder extends Seeder
         }
     }
 }
+
