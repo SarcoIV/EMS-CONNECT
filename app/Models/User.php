@@ -20,12 +20,20 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'first_name',
+        'last_name',
+        'username',
         'email',
+        'phone_number',
         'password',
         'google_id',
         'user_role',
         'role',
         'last_login_at',
+        'verification_code',
+        'verification_code_expires_at',
+        'email_verified',
+        'email_verified_at',
     ];
 
     /**
@@ -46,7 +54,10 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'email_verified' => 'boolean',
             'email_verified_at' => 'datetime',
+            'verification_code_expires_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
