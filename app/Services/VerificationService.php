@@ -60,3 +60,4 @@ class VerificationService
         Cache::forget("verification_code_expires_{$email}");
     }
 }
+
