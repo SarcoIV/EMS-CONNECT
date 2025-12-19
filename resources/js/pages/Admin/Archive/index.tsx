@@ -228,3 +228,4 @@ export default function Archive({ user }: ArchiveProps) {
         </div>
     );
 }
+

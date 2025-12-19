@@ -249,3 +249,4 @@ export default function Administration({ user }: AdministrationProps) {
         </div>
     );
 }
+

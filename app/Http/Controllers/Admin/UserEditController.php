@@ -20,3 +20,4 @@ class UserEditController extends Controller
         ]);
     }
 }
+

@@ -458,3 +458,4 @@ export default function IncidentReports({ user }: IncidentReportsProps) {
         </div>
     );
 }
+

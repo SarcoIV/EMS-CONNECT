@@ -20,3 +20,4 @@ class LiveMapController extends Controller
         ]);
     }
 }
+

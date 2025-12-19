@@ -20,3 +20,4 @@ class ArchiveController extends Controller
         ]);
     }
 }
+
