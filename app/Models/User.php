@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -84,5 +85,45 @@ class User extends Authenticatable
     public function isMobileUser(): bool
     {
         return in_array($this->role, ['responder', 'community']);
+    }
+
+    /**
+     * Check if user is an admin
+     */
+    public function isAdmin(): bool
+    {
+        return $this->user_role === 'admin';
+    }
+
+    /**
+     * Get incidents created by this user
+     */
+    public function incidents(): HasMany
+    {
+        return $this->hasMany(Incident::class);
+    }
+
+    /**
+     * Get incidents assigned to this admin
+     */
+    public function assignedIncidents(): HasMany
+    {
+        return $this->hasMany(Incident::class, 'assigned_admin_id');
+    }
+
+    /**
+     * Get calls made by this user
+     */
+    public function callerCalls(): HasMany
+    {
+        return $this->hasMany(Call::class, 'caller_user_id');
+    }
+
+    /**
+     * Get calls received by this admin
+     */
+    public function receiverCalls(): HasMany
+    {
+        return $this->hasMany(Call::class, 'receiver_admin_id');
     }
 }

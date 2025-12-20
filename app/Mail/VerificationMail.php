@@ -36,3 +36,4 @@ class VerificationMail extends Mailable
     }
 }
 
+

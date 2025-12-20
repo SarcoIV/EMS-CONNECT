@@ -57,6 +57,7 @@ Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMi
 
 use App\Http\Controllers\Admin\AdministrationController;
 use App\Http\Controllers\Admin\ArchiveController;
+use App\Http\Controllers\Admin\CallsController;
 use App\Http\Controllers\Admin\ChatsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\HospitalDirectoryController;
@@ -100,6 +101,13 @@ Route::middleware([AdminMiddleware::class])->group(function () {
 
   // Archive
   Route::get('admin/archive', [ArchiveController::class, 'index'])->name('admin.archive');
+
+  // Calls (Voice Calling with Agora)
+  Route::prefix('admin/calls')->group(function () {
+    Route::get('incoming', [CallsController::class, 'incoming'])->name('admin.calls.incoming');
+    Route::post('answer', [CallsController::class, 'answer'])->name('admin.calls.answer');
+    Route::post('end', [CallsController::class, 'end'])->name('admin.calls.end');
+  });
 });
 
 /*

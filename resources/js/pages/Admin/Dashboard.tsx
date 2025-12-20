@@ -1,5 +1,6 @@
 import { Header } from '@/components/admin/header'; // Import the Header component
 import { Sidebar } from '@/components/admin/sidebar'; // Import the Sidebar component
+import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification'; // Import the IncomingCallNotification component
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface User {
@@ -30,6 +31,9 @@ export default function AdminDashboard({ user }: DashboardProps) {
 
     return (
         <div className="flex h-screen bg-[#f7f2f2]">
+            {/* Incoming Call Notification */}
+            <IncomingCallNotification />
+
             {/* Pass user data to the Sidebar component */}
             <Sidebar user={user} />
 

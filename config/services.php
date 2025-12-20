@@ -41,4 +41,19 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Agora RTC Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for Agora Voice Calling.
+    | NOTE: This uses App ID ONLY (no token generation) for MVP/Demo purposes.
+    | For production, implement token-based authentication.
+    |
+    */
+
+    'agora' => [
+        'app_id' => env('AGORA_APP_ID', 'c81a013cd0db4defabcbdb7d005fe627'),
+    ],
+
 ];
