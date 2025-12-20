@@ -412,14 +412,11 @@ class CallController extends Controller
     {
         return [
             'id' => $call->id,
+            'user_id' => $call->user_id,
             'incident_id' => $call->incident_id,
             'channel_name' => $call->channel_name,
-            'caller_user_id' => $call->caller_user_id,
-            'receiver_admin_id' => $call->receiver_admin_id,
             'status' => $call->status,
-            'created_at' => $call->created_at?->toIso8601String(),
-            'updated_at' => $call->updated_at?->toIso8601String(),
-            'answered_at' => $call->answered_at?->toIso8601String(),
+            'started_at' => $call->started_at?->toIso8601String(),
             'ended_at' => $call->ended_at?->toIso8601String(),
         ];
     }
