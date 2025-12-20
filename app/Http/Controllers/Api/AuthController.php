@@ -145,7 +145,7 @@ class AuthController extends Controller
                 'user_role' => 'user', // Default web role
                 'email_verified' => false,
                 'verification_code' => Hash::make($verificationCode),
-                'verification_code_expires_at' => now()->addMinutes(10),
+                'verification_code_expires_at' => now()->addMinutes(15),
             ]);
 
             // Store code in cache for quick verification
@@ -185,13 +185,13 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'email' => ['required', 'email'],
-            'code' => ['required', 'string', 'size:4', 'regex:/^[0-9]{4}$/'],
+            'code' => ['required', 'string', 'size:6', 'regex:/^[0-9]{6}$/'],
         ], [
             'email.required' => 'Email is required.',
             'email.email' => 'Please provide a valid email address.',
             'code.required' => 'Verification code is required.',
-            'code.size' => 'Verification code must be 4 digits.',
-            'code.regex' => 'Verification code must be 4 digits.',
+            'code.size' => 'Verification code must be 6 digits.',
+            'code.regex' => 'Verification code must be 6 digits.',
         ]);
 
         if ($validator->fails()) {
@@ -318,7 +318,7 @@ class AuthController extends Controller
             // Update user with new code
             $user->update([
                 'verification_code' => Hash::make($verificationCode),
-                'verification_code_expires_at' => now()->addMinutes(10),
+                'verification_code_expires_at' => now()->addMinutes(15),
             ]);
 
             // Store code in cache

@@ -42,8 +42,10 @@ class CallController extends Controller
 
             if ($activeCall) {
                 return response()->json([
-                    'call' => $this->formatCall($activeCall),
+                    'call_id' => (string) $activeCall->id,
                     'channel_name' => $activeCall->channel_name,
+                    'agora_token' => '', // Empty for App ID only mode
+                    'agora_uid' => 0, // 0 for auto-assigned UID
                     'agora_app_id' => config('services.agora.app_id'),
                     'message' => 'You already have an active call.'
                 ], 200);
@@ -83,8 +85,10 @@ class CallController extends Controller
             ]);
 
             return response()->json([
-                'call' => $this->formatCall($call),
+                'call_id' => (string) $call->id,
                 'channel_name' => $channelName,
+                'agora_token' => '', // Empty for App ID only mode (no token generation)
+                'agora_uid' => 0, // 0 for auto-assigned UID
                 'agora_app_id' => config('services.agora.app_id'),
                 'message' => 'Call initiated. Waiting for admin to answer...'
             ], 201);
@@ -187,13 +191,17 @@ class CallController extends Controller
 
             if (!$call) {
                 return response()->json([
-                    'call' => null,
-                    'message' => 'No active call found.'
+                    'has_active_call' => false
                 ], 200);
             }
 
             return response()->json([
-                'call' => $this->formatCall($call)
+                'has_active_call' => true,
+                'call_id' => (string) $call->id,
+                'channel_name' => $call->channel_name,
+                'agora_token' => '', // Empty for App ID only mode
+                'agora_uid' => 0, // 0 for auto-assigned UID
+                'agora_app_id' => config('services.agora.app_id'),
             ], 200);
 
         } catch (\Exception $e) {

@@ -7,20 +7,20 @@ use Illuminate\Support\Facades\Cache;
 class VerificationService
 {
     /**
-     * Generate a 4-digit verification code
+     * Generate a 6-digit verification code
      */
     public static function generateCode(): string
     {
-        return str_pad((string) rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+        return str_pad((string) rand(100000, 999999), 6, '0', STR_PAD_LEFT);
     }
 
     /**
-     * Store verification code in cache (expires in 10 minutes)
+     * Store verification code in cache (expires in 15 minutes)
      */
     public static function storeCode(string $email, string $code): void
     {
-        Cache::put("verification_code_{$email}", $code, now()->addMinutes(10));
-        Cache::put("verification_code_expires_{$email}", now()->addMinutes(10), now()->addMinutes(10));
+        Cache::put("verification_code_{$email}", $code, now()->addMinutes(15));
+        Cache::put("verification_code_expires_{$email}", now()->addMinutes(15), now()->addMinutes(15));
     }
 
     /**
