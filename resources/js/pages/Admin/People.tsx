@@ -33,25 +33,13 @@ interface Stats {
 }
 
 interface PeopleProps {
-    user: { id?: number; name: string; email: string };
-    users?: UserData[];
-    admins?: AdminData[];
-    stats?: Stats;
+    user: { id: number; name: string; email: string };
+    users: UserData[];
+    admins: AdminData[];
+    stats: Stats;
 }
 
-const defaultStats: Stats = {
-    totalUsers: 0,
-    verifiedUsers: 0,
-    totalAdmins: 0,
-    activeToday: 0,
-};
-
-export default function People({ 
-    user, 
-    users: initialUsers = [], 
-    admins: initialAdmins = [], 
-    stats = defaultStats 
-}: PeopleProps) {
+export default function People({ user, users: initialUsers, admins: initialAdmins, stats }: PeopleProps) {
     const [users, setUsers] = useState<UserData[]>(initialUsers);
     const [admins, setAdmins] = useState<AdminData[]>(initialAdmins);
     const [activeTab, setActiveTab] = useState<'users' | 'admins'>('users');
@@ -81,7 +69,7 @@ export default function People({
             setIsLoading(true);
             const response = await axios.get(`/admin/people/${userData.id}`);
             setSelectedUser(response.data.user);
-            setUserIncidents(response.data.incidents || []);
+            setUserIncidents(response.data.incidents);
             setShowUserModal(true);
         } catch (error) {
             console.error('Failed to fetch user details:', error);
@@ -376,7 +364,7 @@ export default function People({
                                                                 </div>
                                                                 <div>
                                                                     <p className="font-medium text-slate-800">{admin.name}</p>
-                                                                    {user.id && admin.id === user.id && (
+                                                                    {admin.id === user.id && (
                                                                         <span className="text-xs text-slate-500">(You)</span>
                                                                     )}
                                                                 </div>
@@ -387,7 +375,7 @@ export default function People({
                                                         <td className="px-4 py-3 text-xs text-slate-500">{formatDate(admin.created_at)}</td>
                                                         <td className="px-4 py-3 text-xs text-slate-500">{formatDate(admin.last_login_at)}</td>
                                                         <td className="px-4 py-3">
-                                                            {(!user.id || admin.id !== user.id) && (
+                                                            {admin.id !== user.id && (
                                                                 <button
                                                                     onClick={() => handleRemoveAdmin(admin.id)}
                                                                     disabled={isLoading}

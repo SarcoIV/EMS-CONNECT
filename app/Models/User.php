@@ -114,9 +114,9 @@ class User extends Authenticatable
     /**
      * Get calls made by this user
      */
-    public function callerCalls(): HasMany
+    public function calls(): HasMany
     {
-        return $this->hasMany(Call::class, 'caller_user_id');
+        return $this->hasMany(Call::class, 'user_id');
     }
 
     /**

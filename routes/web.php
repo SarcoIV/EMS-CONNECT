@@ -72,18 +72,26 @@ Route::middleware([AdminMiddleware::class])->group(function () {
 
   // Dashboard
   Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+  Route::get('admin/dashboard/stats', [DashboardController::class, 'stats'])->name('admin.dashboard.stats');
+  Route::patch('admin/incidents/{id}/status', [DashboardController::class, 'updateIncidentStatus'])->name('admin.incidents.updateStatus');
 
   // Live Map
   Route::get('admin/live-map', [LiveMapController::class, 'index'])->name('admin.live-map');
+  Route::get('admin/live-map/data', [LiveMapController::class, 'data'])->name('admin.live-map.data');
 
   // Incident Reports
   Route::get('admin/incident-reports', [IncidentReportsController::class, 'index'])->name('admin.incident-reports');
+  Route::get('admin/incident-reports/export', [IncidentReportsController::class, 'export'])->name('admin.incident-reports.export');
 
   // Administration
   Route::get('admin/administration', [AdministrationController::class, 'index'])->name('admin.administration');
 
   // People
   Route::get('admin/people', [PeopleController::class, 'index'])->name('admin.people');
+  Route::get('admin/people/{id}', [PeopleController::class, 'show'])->name('admin.people.show');
+  Route::patch('admin/people/{id}/toggle-status', [PeopleController::class, 'toggleStatus'])->name('admin.people.toggleStatus');
+  Route::post('admin/people/admin', [PeopleController::class, 'createAdmin'])->name('admin.people.createAdmin');
+  Route::delete('admin/people/admin/{id}', [PeopleController::class, 'deleteAdmin'])->name('admin.people.deleteAdmin');
 
   // Settings
   Route::get('admin/settings', [SettingsController::class, 'index'])->name('admin.settings');

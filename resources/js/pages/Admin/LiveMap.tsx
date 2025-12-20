@@ -4,6 +4,9 @@ import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
 import axios from 'axios';
 
+// Import Leaflet CSS in your app.css or here
+// You'll need to add: @import 'leaflet/dist/leaflet.css';
+
 interface User {
     id: number;
     name: string;
@@ -45,8 +48,8 @@ interface ActiveCall {
 
 interface LiveMapProps {
     user: { name: string; email: string };
-    incidents?: Incident[];
-    activeCalls?: ActiveCall[];
+    incidents: Incident[];
+    activeCalls: ActiveCall[];
     focusedIncidentId?: number;
 }
 
@@ -56,7 +59,6 @@ const POLL_INTERVAL = 5000; // Poll every 5 seconds
 const statusColors: Record<string, string> = {
     pending: '#f59e0b',
     dispatched: '#3b82f6',
-    in_progress: '#8b5cf6',
     completed: '#10b981',
     cancelled: '#6b7280',
 };
@@ -73,8 +75,8 @@ const typeIcons: Record<string, string> = {
 
 export default function LiveMap({ 
     user, 
-    incidents: initialIncidents = [], 
-    activeCalls: initialCalls = [],
+    incidents: initialIncidents, 
+    activeCalls: initialCalls,
     focusedIncidentId 
 }: LiveMapProps) {
     const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
@@ -102,12 +104,12 @@ export default function LiveMap({
             console.log('[LIVEMAP] 🔄 Refreshing map data...');
             const response = await axios.get('/admin/live-map/data');
             
-            setIncidents(response.data.incidents || []);
-            setActiveCalls(response.data.activeCalls || []);
+            setIncidents(response.data.incidents);
+            setActiveCalls(response.data.activeCalls);
             setLastUpdated(new Date());
 
             // Update markers on map
-            updateMarkers(response.data.incidents || []);
+            updateMarkers(response.data.incidents);
         } catch (error) {
             console.error('[LIVEMAP] ❌ Failed to fetch map data:', error);
         }
@@ -147,7 +149,7 @@ export default function LiveMap({
                 // Focus on specific incident if provided
                 if (focusedIncidentId) {
                     const focused = initialIncidents.find(i => i.id === focusedIncidentId);
-                    if (focused && focused.latitude && focused.longitude) {
+                    if (focused) {
                         mapRef.current.setView([focused.latitude, focused.longitude], 16);
                         setSelectedIncident(focused);
                     }
@@ -213,13 +215,13 @@ export default function LiveMap({
             const popupContent = `
                 <div style="min-width: 200px;">
                     <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
-                        ${typeIcons[incident.type] || '⚠️'} ${(incident.type || 'unknown').replace('_', ' ').toUpperCase()}
+                        ${typeIcons[incident.type]} ${incident.type.replace('_', ' ').toUpperCase()}
                     </div>
                     <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
                         #${incident.id.toString().padStart(4, '0')}
                     </div>
-                    <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${statusColors[incident.status] || '#6b7280'}20; color: ${statusColors[incident.status] || '#6b7280'};">
-                        ${(incident.status || 'unknown').toUpperCase()}
+                    <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${statusColors[incident.status]}20; color: ${statusColors[incident.status]};">
+                        ${incident.status.toUpperCase()}
                     </div>
                     ${incident.has_active_call ? '<span style="margin-left: 4px; color: #ef4444; font-size: 11px;">📞 Active Call</span>' : ''}
                     <div style="margin-top: 8px; font-size: 12px;">
@@ -312,7 +314,6 @@ export default function LiveMap({
                                     <option value="all">All Status</option>
                                     <option value="pending">Pending</option>
                                     <option value="dispatched">Dispatched</option>
-                                    <option value="in_progress">In Progress</option>
                                     <option value="completed">Completed</option>
                                 </select>
                                 <select
@@ -323,7 +324,7 @@ export default function LiveMap({
                                     <option value="all">All Types</option>
                                     {uniqueTypes.map(type => (
                                         <option key={type} value={type}>
-                                            {typeIcons[type] || '⚠️'} {(type || 'unknown').replace('_', ' ')}
+                                            {typeIcons[type]} {type.replace('_', ' ')}
                                         </option>
                                     ))}
                                 </select>
@@ -350,10 +351,6 @@ export default function LiveMap({
                                 <div className="flex items-center gap-2">
                                     <span className="h-3 w-3 rounded-full" style={{ backgroundColor: statusColors.dispatched }} />
                                     <span>Dispatched</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: statusColors.in_progress }} />
-                                    <span>In Progress</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="h-3 w-3 rounded-full" style={{ backgroundColor: statusColors.completed }} />
@@ -435,44 +432,43 @@ export default function LiveMap({
                             </button>
                         </div>
                         <div className="max-h-48 space-y-2 overflow-y-auto">
-                            {filteredIncidents.length > 0 ? (
-                                filteredIncidents.slice(0, 10).map(incident => (
-                                    <div
-                                        key={incident.id}
-                                        onClick={() => handleFocusIncident(incident)}
-                                        className={`cursor-pointer rounded-lg border p-2 transition hover:border-red-200 hover:bg-red-50 ${
-                                            selectedIncident?.id === incident.id ? 'border-red-300 bg-red-50' : 'border-slate-100'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <span>{typeIcons[incident.type] || '⚠️'}</span>
-                                                <span className="text-sm font-medium">#{incident.id}</span>
-                                            </div>
-                                            <span 
-                                                className="rounded-full px-2 py-0.5 text-xs font-medium"
-                                                style={{ 
-                                                    backgroundColor: `${statusColors[incident.status] || '#6b7280'}20`,
-                                                    color: statusColors[incident.status] || '#6b7280'
-                                                }}
-                                            >
-                                                {incident.status}
-                                            </span>
+                            {filteredIncidents.slice(0, 10).map(incident => (
+                                <div
+                                    key={incident.id}
+                                    onClick={() => handleFocusIncident(incident)}
+                                    className={`cursor-pointer rounded-lg border p-2 transition hover:border-red-200 hover:bg-red-50 ${
+                                        selectedIncident?.id === incident.id ? 'border-red-300 bg-red-50' : 'border-slate-100'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span>{typeIcons[incident.type]}</span>
+                                            <span className="text-sm font-medium">#{incident.id}</span>
                                         </div>
-                                        <p className="mt-1 truncate text-xs text-slate-500">{incident.address || 'No address'}</p>
-                                        <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
-                                            <span>{incident.user?.name || 'Unknown'}</span>
-                                            <span>{incident.created_at ? formatTime(incident.created_at) : 'N/A'}</span>
-                                        </div>
-                                        {incident.has_active_call && (
-                                            <div className="mt-1 flex items-center gap-1 text-xs text-red-600">
-                                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-                                                Active call
-                                            </div>
-                                        )}
+                                        <span 
+                                            className="rounded-full px-2 py-0.5 text-xs font-medium"
+                                            style={{ 
+                                                backgroundColor: `${statusColors[incident.status]}20`,
+                                                color: statusColors[incident.status]
+                                            }}
+                                        >
+                                            {incident.status}
+                                        </span>
                                     </div>
-                                ))
-                            ) : (
+                                    <p className="mt-1 truncate text-xs text-slate-500">{incident.address || 'No address'}</p>
+                                    <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
+                                        <span>{incident.user?.name}</span>
+                                        <span>{formatTime(incident.created_at)}</span>
+                                    </div>
+                                    {incident.has_active_call && (
+                                        <div className="mt-1 flex items-center gap-1 text-xs text-red-600">
+                                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+                                            Active call
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            {filteredIncidents.length === 0 && (
                                 <p className="py-4 text-center text-sm text-slate-500">No incidents to display</p>
                             )}
                         </div>
@@ -484,10 +480,10 @@ export default function LiveMap({
                             <div className="flex items-start justify-between">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-2xl">{typeIcons[selectedIncident.type] || '⚠️'}</span>
+                                        <span className="text-2xl">{typeIcons[selectedIncident.type]}</span>
                                         <div>
                                             <h3 className="font-bold text-slate-800">
-                                                {(selectedIncident.type || 'unknown').replace('_', ' ').toUpperCase()}
+                                                {selectedIncident.type.replace('_', ' ').toUpperCase()}
                                             </h3>
                                             <p className="text-xs text-slate-500">Incident #{selectedIncident.id}</p>
                                         </div>
@@ -508,11 +504,11 @@ export default function LiveMap({
                                     <span 
                                         className="rounded-full px-2 py-0.5 text-xs font-medium"
                                         style={{ 
-                                            backgroundColor: `${statusColors[selectedIncident.status] || '#6b7280'}20`,
-                                            color: statusColors[selectedIncident.status] || '#6b7280'
+                                            backgroundColor: `${statusColors[selectedIncident.status]}20`,
+                                            color: statusColors[selectedIncident.status]
                                         }}
                                     >
-                                        {(selectedIncident.status || 'unknown').toUpperCase()}
+                                        {selectedIncident.status.toUpperCase()}
                                     </span>
                                     {selectedIncident.has_active_call && (
                                         <span className="flex items-center gap-1 text-xs text-red-600">
@@ -525,7 +521,7 @@ export default function LiveMap({
                                 <div>
                                     <p className="text-xs text-slate-500">Reporter</p>
                                     <p className="font-medium">{selectedIncident.user?.name || 'Unknown'}</p>
-                                    <p className="text-xs text-slate-500">{selectedIncident.user?.phone_number || selectedIncident.user?.email || 'N/A'}</p>
+                                    <p className="text-xs text-slate-500">{selectedIncident.user?.phone_number || selectedIncident.user?.email}</p>
                                 </div>
                                 
                                 <div>
