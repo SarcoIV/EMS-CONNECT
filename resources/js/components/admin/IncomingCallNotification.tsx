@@ -27,7 +27,7 @@ interface IncomingCall {
     channel_name: string;
     caller: Caller;
     status: string;
-    created_at: string;
+    started_at: string;
     incident: Incident | null;
 }
 

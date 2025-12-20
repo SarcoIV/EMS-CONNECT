@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class CallsController extends Controller
 {
     /**
-     * Get incoming calls for admin (calls with status 'calling').
+     * Get incoming calls for admin (calls with status 'active' that haven't been answered).
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -27,10 +27,11 @@ class CallsController extends Controller
                 ], 403);
             }
 
-            // Get all calls with 'calling' status
-            $calls = Call::with(['caller:id,name,email,phone_number', 'incident'])
-                ->where('status', 'calling')
-                ->orderBy('created_at', 'desc')
+            // Get all calls with 'active' status that haven't been answered yet
+            $calls = Call::with(['user:id,name,email,phone_number', 'incident'])
+                ->where('status', 'active')
+                ->whereNull('receiver_admin_id') // Not yet answered by any admin
+                ->orderBy('started_at', 'desc')
                 ->get();
 
             $formattedCalls = $calls->map(function ($call) {
@@ -39,13 +40,13 @@ class CallsController extends Controller
                     'incident_id' => $call->incident_id,
                     'channel_name' => $call->channel_name,
                     'caller' => [
-                        'id' => $call->caller->id,
-                        'name' => $call->caller->name,
-                        'email' => $call->caller->email,
-                        'phone_number' => $call->caller->phone_number ?? null,
+                        'id' => $call->user->id,
+                        'name' => $call->user->name,
+                        'email' => $call->user->email,
+                        'phone_number' => $call->user->phone_number ?? null,
                     ],
                     'status' => $call->status,
-                    'created_at' => $call->created_at?->toIso8601String(),
+                    'started_at' => $call->started_at?->toIso8601String(),
                     'incident' => $call->incident ? [
                         'id' => $call->incident->id,
                         'type' => $call->incident->type,
@@ -95,7 +96,7 @@ class CallsController extends Controller
                 ], 403);
             }
 
-            $call = Call::with('caller:id,name,email,phone_number')
+            $call = Call::with('user:id,name,email,phone_number')
                 ->find($validated['call_id']);
 
             if (!$call) {
@@ -104,16 +105,17 @@ class CallsController extends Controller
                 ], 404);
             }
 
-            if ($call->status !== 'calling') {
+            // Check if call is active and not already answered
+            if ($call->status !== 'active' || $call->receiver_admin_id !== null) {
                 return response()->json([
                     'message' => 'Call is not available to answer.',
-                    'current_status' => $call->status
+                    'current_status' => $call->status,
+                    'is_answered' => $call->receiver_admin_id !== null
                 ], 400);
             }
 
-            // Update call status to answered
+            // Mark call as answered by admin (keep status as 'active')
             $call->update([
-                'status' => 'answered',
                 'receiver_admin_id' => $user->id,
                 'answered_at' => now(),
             ]);
@@ -129,13 +131,13 @@ class CallsController extends Controller
                     'incident_id' => $call->incident_id,
                     'channel_name' => $call->channel_name,
                     'caller' => [
-                        'id' => $call->caller->id,
-                        'name' => $call->caller->name,
-                        'email' => $call->caller->email,
-                        'phone_number' => $call->caller->phone_number ?? null,
+                        'id' => $call->user->id,
+                        'name' => $call->user->name,
+                        'email' => $call->user->email,
+                        'phone_number' => $call->user->phone_number ?? null,
                     ],
                     'status' => $call->status,
-                    'created_at' => $call->created_at?->toIso8601String(),
+                    'started_at' => $call->started_at?->toIso8601String(),
                     'answered_at' => $call->answered_at?->toIso8601String(),
                 ],
                 'channel_name' => $call->channel_name,
