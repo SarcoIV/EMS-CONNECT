@@ -36,16 +36,22 @@ class CallController extends Controller
             $user = $request->user();
 
             // Check if user already has an active call
-            $activeCall = Call::where('caller_user_id', $user->id)
-                ->whereIn('status', ['calling', 'answered'])
+            $activeCall = Call::where('user_id', $user->id)
+                ->where('status', 'active')
                 ->first();
 
             if ($activeCall) {
                 return response()->json([
-                    'call_id' => (string) $activeCall->id,
+                    'call' => [
+                        'id' => $activeCall->id,
+                        'user_id' => $activeCall->user_id,
+                        'incident_id' => $activeCall->incident_id,
+                        'channel_name' => $activeCall->channel_name,
+                        'status' => $activeCall->status,
+                        'started_at' => $activeCall->started_at?->toIso8601String(),
+                        'ended_at' => $activeCall->ended_at?->toIso8601String(),
+                    ],
                     'channel_name' => $activeCall->channel_name,
-                    'agora_token' => '', // Empty for App ID only mode
-                    'agora_uid' => 0, // 0 for auto-assigned UID
                     'agora_app_id' => config('services.agora.app_id'),
                     'message' => 'You already have an active call.'
                 ], 200);
@@ -70,11 +76,11 @@ class CallController extends Controller
 
             // Create call
             $call = Call::create([
+                'user_id' => $user->id,
                 'incident_id' => $request->incident_id,
                 'channel_name' => $channelName,
-                'caller_user_id' => $user->id,
-                'receiver_admin_id' => null,
-                'status' => 'calling',
+                'status' => 'active',
+                'started_at' => now(),
             ]);
 
             Log::info('Emergency call started', [
@@ -85,12 +91,17 @@ class CallController extends Controller
             ]);
 
             return response()->json([
-                'call_id' => (string) $call->id,
+                'call' => [
+                    'id' => $call->id,
+                    'user_id' => $call->user_id,
+                    'incident_id' => $call->incident_id,
+                    'channel_name' => $call->channel_name,
+                    'status' => $call->status,
+                    'started_at' => $call->started_at?->toIso8601String(),
+                    'ended_at' => $call->ended_at,
+                ],
                 'channel_name' => $channelName,
-                'agora_token' => '', // Empty for App ID only mode (no token generation)
-                'agora_uid' => 0, // 0 for auto-assigned UID
                 'agora_app_id' => config('services.agora.app_id'),
-                'message' => 'Call initiated. Waiting for admin to answer...'
             ], 201);
 
         } catch (\Exception $e) {
@@ -131,7 +142,7 @@ class CallController extends Controller
             // Find call where user is either caller or receiver
             $call = Call::where('id', $request->call_id)
                 ->where(function ($query) use ($user) {
-                    $query->where('caller_user_id', $user->id)
+                    $query->where('user_id', $user->id)
                           ->orWhere('receiver_admin_id', $user->id);
                 })
                 ->first();
@@ -145,7 +156,16 @@ class CallController extends Controller
 
             if ($call->isEnded()) {
                 return response()->json([
-                    'message' => 'Call has already ended.'
+                    'message' => 'Call has already ended.',
+                    'call' => [
+                        'id' => $call->id,
+                        'user_id' => $call->user_id,
+                        'incident_id' => $call->incident_id,
+                        'channel_name' => $call->channel_name,
+                        'status' => $call->status,
+                        'started_at' => $call->started_at?->toIso8601String(),
+                        'ended_at' => $call->ended_at?->toIso8601String(),
+                    ]
                 ], 200);
             }
 
@@ -160,7 +180,16 @@ class CallController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Call ended successfully.'
+                'message' => 'Call ended successfully.',
+                'call' => [
+                    'id' => $call->id,
+                    'user_id' => $call->user_id,
+                    'incident_id' => $call->incident_id,
+                    'channel_name' => $call->channel_name,
+                    'status' => $call->status,
+                    'started_at' => $call->started_at?->toIso8601String(),
+                    'ended_at' => $call->ended_at?->toIso8601String(),
+                ]
             ], 200);
 
         } catch (\Exception $e) {
@@ -184,23 +213,30 @@ class CallController extends Controller
         try {
             $user = $request->user();
 
-            $call = Call::where('caller_user_id', $user->id)
-                ->whereIn('status', ['calling', 'answered'])
-                ->orderBy('created_at', 'desc')
+            $call = Call::where('user_id', $user->id)
+                ->where('status', 'active')
+                ->orderBy('started_at', 'desc')
                 ->first();
 
             if (!$call) {
                 return response()->json([
-                    'has_active_call' => false
+                    'has_active_call' => false,
+                    'call' => null
                 ], 200);
             }
 
             return response()->json([
                 'has_active_call' => true,
-                'call_id' => (string) $call->id,
+                'call' => [
+                    'id' => $call->id,
+                    'user_id' => $call->user_id,
+                    'incident_id' => $call->incident_id,
+                    'channel_name' => $call->channel_name,
+                    'status' => $call->status,
+                    'started_at' => $call->started_at?->toIso8601String(),
+                    'ended_at' => $call->ended_at,
+                ],
                 'channel_name' => $call->channel_name,
-                'agora_token' => '', // Empty for App ID only mode
-                'agora_uid' => 0, // 0 for auto-assigned UID
                 'agora_app_id' => config('services.agora.app_id'),
             ], 200);
 
@@ -215,7 +251,7 @@ class CallController extends Controller
     }
 
     /**
-     * Get incoming calls for admin (calls with status 'calling').
+     * Get incoming calls for admin (calls with status 'active' waiting for admin).
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -232,10 +268,11 @@ class CallController extends Controller
                 ], 403);
             }
 
-            // Get all calls with 'calling' status
-            $calls = Call::with(['caller:id,name,email,phone_number', 'incident'])
-                ->where('status', 'calling')
-                ->orderBy('created_at', 'desc')
+            // Get all calls with 'active' status that haven't been answered yet
+            $calls = Call::with(['user:id,name,email,phone_number', 'incident'])
+                ->where('status', 'active')
+                ->whereNull('receiver_admin_id') // Not yet answered by any admin
+                ->orderBy('started_at', 'desc')
                 ->get();
 
             $formattedCalls = $calls->map(function ($call) {
@@ -244,13 +281,13 @@ class CallController extends Controller
                     'incident_id' => $call->incident_id,
                     'channel_name' => $call->channel_name,
                     'caller' => [
-                        'id' => $call->caller->id,
-                        'name' => $call->caller->name,
-                        'email' => $call->caller->email,
-                        'phone_number' => $call->caller->phone_number ?? null,
+                        'id' => $call->user->id,
+                        'name' => $call->user->name,
+                        'email' => $call->user->email,
+                        'phone_number' => $call->user->phone_number ?? null,
                     ],
                     'status' => $call->status,
-                    'created_at' => $call->created_at?->toIso8601String(),
+                    'started_at' => $call->started_at?->toIso8601String(),
                     'incident' => $call->incident ? [
                         'id' => $call->incident->id,
                         'type' => $call->incident->type,
@@ -307,7 +344,7 @@ class CallController extends Controller
                 ], 403);
             }
 
-            $call = Call::with('caller:id,name,email,phone_number')
+            $call = Call::with('user:id,name,email,phone_number')
                 ->find($request->call_id);
 
             if (!$call) {
@@ -316,16 +353,16 @@ class CallController extends Controller
                 ], 404);
             }
 
-            if ($call->status !== 'calling') {
+            if ($call->status !== 'active' || $call->receiver_admin_id !== null) {
                 return response()->json([
                     'message' => 'Call is not available to answer.',
-                    'current_status' => $call->status
+                    'current_status' => $call->status,
+                    'is_answered' => $call->receiver_admin_id !== null
                 ], 400);
             }
 
-            // Update call status to answered
+            // Update call - mark as answered by admin (but keep status as 'active')
             $call->update([
-                'status' => 'answered',
                 'receiver_admin_id' => $user->id,
                 'answered_at' => now(),
             ]);
@@ -341,13 +378,13 @@ class CallController extends Controller
                     'incident_id' => $call->incident_id,
                     'channel_name' => $call->channel_name,
                     'caller' => [
-                        'id' => $call->caller->id,
-                        'name' => $call->caller->name,
-                        'email' => $call->caller->email,
-                        'phone_number' => $call->caller->phone_number ?? null,
+                        'id' => $call->user->id,
+                        'name' => $call->user->name,
+                        'email' => $call->user->email,
+                        'phone_number' => $call->user->phone_number ?? null,
                     ],
                     'status' => $call->status,
-                    'created_at' => $call->created_at?->toIso8601String(),
+                    'started_at' => $call->started_at?->toIso8601String(),
                     'answered_at' => $call->answered_at?->toIso8601String(),
                 ],
                 'channel_name' => $call->channel_name,
@@ -387,3 +424,4 @@ class CallController extends Controller
         ];
     }
 }
+

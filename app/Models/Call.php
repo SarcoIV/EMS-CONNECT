@@ -13,13 +13,14 @@ class Call extends Model
      * @var array<string>
      */
     protected $fillable = [
+        'user_id',
         'incident_id',
         'channel_name',
-        'caller_user_id',
-        'receiver_admin_id',
         'status',
-        'answered_at',
+        'started_at',
         'ended_at',
+        'receiver_admin_id', // For backward compatibility with admin answering
+        'answered_at', // For backward compatibility with admin answering
     ];
 
     /**
@@ -30,6 +31,7 @@ class Call extends Model
     protected function casts(): array
     {
         return [
+            'started_at' => 'datetime',
             'answered_at' => 'datetime',
             'ended_at' => 'datetime',
         ];
@@ -44,11 +46,19 @@ class Call extends Model
     }
 
     /**
-     * Get the caller (community user).
+     * Get the user (caller/community user).
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Get the caller (community user) - alias for backward compatibility.
      */
     public function caller(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'caller_user_id');
+        return $this->user();
     }
 
     /**
@@ -60,27 +70,11 @@ class Call extends Model
     }
 
     /**
-     * Check if call is active (calling or answered).
+     * Check if call is active.
      */
     public function isActive(): bool
     {
-        return in_array($this->status, ['calling', 'answered']);
-    }
-
-    /**
-     * Check if call is calling.
-     */
-    public function isCalling(): bool
-    {
-        return $this->status === 'calling';
-    }
-
-    /**
-     * Check if call is answered.
-     */
-    public function isAnswered(): bool
-    {
-        return $this->status === 'answered';
+        return $this->status === 'active';
     }
 
     /**
@@ -92,20 +86,11 @@ class Call extends Model
     }
 
     /**
-     * Check if call was missed.
-     */
-    public function isMissed(): bool
-    {
-        return $this->status === 'missed';
-    }
-
-    /**
-     * Generate unique channel name.
+     * Generate unique channel name for mobile app.
      */
     public static function generateChannelName(int $userId): string
     {
         $timestamp = time();
-        $random = substr(md5(uniqid()), 0, 6);
-        return "ems_{$userId}_{$timestamp}_{$random}";
+        return "emergency_call_{$userId}_{$timestamp}";
     }
 }

@@ -13,20 +13,23 @@ return new class extends Migration
     {
         Schema::create('calls', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('incident_id')->nullable()->constrained()->onDelete('set null');
             $table->string('channel_name')->unique();
-            $table->foreignId('caller_user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('receiver_admin_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->enum('status', ['calling', 'answered', 'ended', 'missed'])->default('calling');
-            $table->timestamp('answered_at')->nullable();
+            $table->enum('status', ['active', 'ended'])->default('active');
+            $table->timestamp('started_at');
             $table->timestamp('ended_at')->nullable();
             $table->timestamps();
+
+            // Additional fields for admin answering (backward compatibility)
+            $table->foreignId('receiver_admin_id')->nullable()->constrained('users')->onDelete('set null')->after('user_id');
+            $table->timestamp('answered_at')->nullable()->after('started_at');
 
             // Indexes for faster queries
             $table->index('channel_name');
             $table->index('status');
-            $table->index('created_at');
-            $table->index(['caller_user_id', 'status']);
+            $table->index('started_at');
+            $table->index(['user_id', 'status']);
         });
     }
 
