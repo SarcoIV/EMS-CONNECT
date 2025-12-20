@@ -92,13 +92,34 @@ export function IncomingCallNotification() {
     useEffect(() => {
         const fetchIncomingCalls = async () => {
             try {
+                console.log('[CALLS] 🔍 Polling for incoming calls...');
                 const response = await axios.get('/admin/calls/incoming');
-                setIncomingCalls(response.data.calls || []);
+                const calls = response.data.calls || [];
+                
+                if (calls.length > 0) {
+                    console.log('[CALLS] 🔔 INCOMING CALLS DETECTED:', calls.length);
+                    calls.forEach((call: IncomingCall) => {
+                        console.log('[CALLS] 📞 Call details:', {
+                            id: call.id,
+                            caller: call.caller.name,
+                            email: call.caller.email,
+                            channel: call.channel_name,
+                            status: call.status,
+                            started_at: call.started_at,
+                        });
+                    });
+                } else {
+                    console.log('[CALLS] No incoming calls');
+                }
+                
+                setIncomingCalls(calls);
             } catch (error) {
-                console.error('Failed to fetch incoming calls:', error);
+                console.error('[CALLS] ❌ Failed to fetch incoming calls:', error);
             }
         };
 
+        console.log('[CALLS] 🚀 Starting incoming call polling (every 3 seconds)');
+        
         // Initial fetch
         fetchIncomingCalls();
 
@@ -106,6 +127,7 @@ export function IncomingCallNotification() {
         pollInterval.current = setInterval(fetchIncomingCalls, POLL_INTERVAL);
 
         return () => {
+            console.log('[CALLS] 🛑 Stopping incoming call polling');
             if (pollInterval.current) {
                 clearInterval(pollInterval.current);
             }
@@ -135,6 +157,12 @@ export function IncomingCallNotification() {
     // Answer call
     const handleAnswerCall = async (call: IncomingCall) => {
         try {
+            console.log('[CALLS] 📲 Answering call:', {
+                call_id: call.id,
+                caller: call.caller.name,
+                channel: call.channel_name,
+            });
+            
             setIsJoining(true);
             setActiveCall(call);
 
@@ -143,7 +171,7 @@ export function IncomingCallNotification() {
                 call_id: call.id,
             });
 
-            console.log('✅ Call answered:', response.data);
+            console.log('[CALLS] ✅ Call answered successfully:', response.data);
 
             // Join Agora channel
             if (agoraClient.current) {
@@ -158,7 +186,7 @@ export function IncomingCallNotification() {
                 localAudioTrack.current = await AgoraRTC.createMicrophoneAudioTrack();
                 await agoraClient.current.publish([localAudioTrack.current]);
 
-                console.log('✅ Joined Agora channel:', call.channel_name);
+                console.log('[CALLS] ✅ Joined Agora channel:', call.channel_name);
                 setIsInCall(true);
                 setIsJoining(false);
 
@@ -166,7 +194,7 @@ export function IncomingCallNotification() {
                 setIncomingCalls((prev) => prev.filter((c) => c.id !== call.id));
             }
         } catch (error) {
-            console.error('Failed to answer call:', error);
+            console.error('[CALLS] ❌ Failed to answer call:', error);
             setIsJoining(false);
             setActiveCall(null);
             alert('Failed to answer call. Please try again.');
@@ -193,10 +221,10 @@ export function IncomingCallNotification() {
                     await agoraClient.current.leave();
                 }
 
-                console.log('✅ Call ended');
+                console.log('[CALLS] 🔴 Call ended');
             }
         } catch (error) {
-            console.error('Failed to end call:', error);
+            console.error('[CALLS] ❌ Failed to end call:', error);
         } finally {
             setIsInCall(false);
             setActiveCall(null);
@@ -213,7 +241,7 @@ export function IncomingCallNotification() {
             });
             setIncomingCalls((prev) => prev.filter((c) => c.id !== call.id));
         } catch (error) {
-            console.error('Failed to reject call:', error);
+            console.error('[CALLS] ❌ Failed to reject call:', error);
         }
     };
 

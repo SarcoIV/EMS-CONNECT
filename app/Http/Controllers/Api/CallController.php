@@ -83,11 +83,14 @@ class CallController extends Controller
                 'started_at' => now(),
             ]);
 
-            Log::info('Emergency call started', [
+            Log::info('[CALLS] 📞 NEW EMERGENCY CALL FROM MOBILE APP', [
                 'call_id' => $call->id,
                 'user_id' => $user->id,
+                'user_name' => $user->name,
+                'user_email' => $user->email,
                 'incident_id' => $request->incident_id,
                 'channel_name' => $channelName,
+                'started_at' => now()->toIso8601String(),
             ]);
 
             return response()->json([
@@ -105,7 +108,11 @@ class CallController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            Log::error('Failed to start call: ' . $e->getMessage());
+            Log::error('[CALLS] Failed to start call from mobile', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id ?? null,
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return response()->json([
                 'message' => 'An error occurred while starting the call. Please try again.',

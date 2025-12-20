@@ -22,10 +22,21 @@ class CallsController extends Controller
 
             // Only allow admin users to see incoming calls
             if (!$user || !$user->isAdmin()) {
+                Log::warning('[CALLS] Unauthorized access attempt to incoming calls', [
+                    'user_id' => $user?->id,
+                    'user_role' => $user?->user_role,
+                ]);
                 return response()->json([
                     'message' => 'Unauthorized. Admin access required.'
                 ], 403);
             }
+
+            // Log the polling request
+            Log::debug('[CALLS] Admin polling for incoming calls', [
+                'admin_id' => $user->id,
+                'admin_name' => $user->name,
+                'timestamp' => now()->toIso8601String(),
+            ]);
 
             // Get all calls with 'active' status that haven't been answered yet
             $calls = Call::with(['user:id,name,email,phone_number', 'incident'])
@@ -33,6 +44,21 @@ class CallsController extends Controller
                 ->whereNull('receiver_admin_id') // Not yet answered by any admin
                 ->orderBy('started_at', 'desc')
                 ->get();
+
+            // Log if there are incoming calls
+            if ($calls->count() > 0) {
+                Log::info('[CALLS] 🔔 INCOMING CALLS DETECTED', [
+                    'count' => $calls->count(),
+                    'admin_id' => $user->id,
+                    'calls' => $calls->map(fn($c) => [
+                        'call_id' => $c->id,
+                        'channel_name' => $c->channel_name,
+                        'caller_id' => $c->user_id,
+                        'caller_name' => $c->user?->name,
+                        'started_at' => $c->started_at?->toIso8601String(),
+                    ])->toArray(),
+                ]);
+            }
 
             $formattedCalls = $calls->map(function ($call) {
                 return [
@@ -62,7 +88,10 @@ class CallsController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Failed to fetch incoming calls: ' . $e->getMessage());
+            Log::error('[CALLS] Failed to fetch incoming calls', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return response()->json([
                 'message' => 'An error occurred while fetching incoming calls.',
@@ -120,9 +149,14 @@ class CallsController extends Controller
                 'answered_at' => now(),
             ]);
 
-            Log::info('Call answered by admin', [
+            Log::info('[CALLS] ✅ CALL ANSWERED BY ADMIN', [
                 'call_id' => $call->id,
+                'channel_name' => $call->channel_name,
                 'admin_id' => $user->id,
+                'admin_name' => $user->name,
+                'caller_id' => $call->user_id,
+                'caller_name' => $call->user?->name,
+                'answered_at' => now()->toIso8601String(),
             ]);
 
             return response()->json([
@@ -146,7 +180,11 @@ class CallsController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Failed to answer call: ' . $e->getMessage());
+            Log::error('[CALLS] Failed to answer call', [
+                'error' => $e->getMessage(),
+                'call_id' => $validated['call_id'] ?? null,
+                'admin_id' => $user?->id,
+            ]);
 
             return response()->json([
                 'message' => 'An error occurred while answering the call.',
@@ -205,9 +243,13 @@ class CallsController extends Controller
                 'ended_at' => now(),
             ]);
 
-            Log::info('Call ended by admin', [
+            Log::info('[CALLS] 🔴 CALL ENDED BY ADMIN', [
                 'call_id' => $call->id,
+                'channel_name' => $call->channel_name,
                 'admin_id' => $user->id,
+                'admin_name' => $user->name,
+                'caller_id' => $call->user_id,
+                'ended_at' => now()->toIso8601String(),
             ]);
 
             return response()->json([
@@ -215,7 +257,11 @@ class CallsController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Failed to end call: ' . $e->getMessage());
+            Log::error('[CALLS] Failed to end call', [
+                'error' => $e->getMessage(),
+                'call_id' => $validated['call_id'] ?? null,
+                'admin_id' => $user?->id,
+            ]);
 
             return response()->json([
                 'message' => 'An error occurred while ending the call.',
