@@ -25,10 +25,23 @@ interface AdminData {
     last_login_at?: string;
 }
 
+interface ResponderData {
+    id: number;
+    name: string;
+    email: string;
+    phone_number?: string;
+    role: string;
+    email_verified: boolean;
+    created_at: string;
+    last_login_at?: string;
+}
+
 interface Stats {
     totalUsers: number;
     verifiedUsers: number;
     totalAdmins: number;
+    totalResponders: number;
+    activeResponders: number;
     activeToday: number;
 }
 
@@ -36,6 +49,7 @@ interface PeopleProps {
     user: { id?: number; name: string; email: string };
     users?: UserData[];
     admins?: AdminData[];
+    responders?: ResponderData[];
     stats?: Stats;
 }
 
@@ -43,24 +57,30 @@ const defaultStats: Stats = {
     totalUsers: 0,
     verifiedUsers: 0,
     totalAdmins: 0,
+    totalResponders: 0,
+    activeResponders: 0,
     activeToday: 0,
 };
 
 export default function People({ 
     user, 
     users: initialUsers = [], 
-    admins: initialAdmins = [], 
+    admins: initialAdmins = [],
+    responders: initialResponders = [],
     stats = defaultStats 
 }: PeopleProps) {
     const [users, setUsers] = useState<UserData[]>(initialUsers);
     const [admins, setAdmins] = useState<AdminData[]>(initialAdmins);
-    const [activeTab, setActiveTab] = useState<'users' | 'admins'>('users');
+    const [responders, setResponders] = useState<ResponderData[]>(initialResponders);
+    const [activeTab, setActiveTab] = useState<'users' | 'admins' | 'responders'>('users');
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
     const [showUserModal, setShowUserModal] = useState(false);
     const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+    const [showCreateResponderModal, setShowCreateResponderModal] = useState(false);
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
+    const [newResponder, setNewResponder] = useState({ name: '', email: '', phone_number: '', password: '' });
     const [userIncidents, setUserIncidents] = useState<any[]>([]);
 
     // Filter users/admins based on search
@@ -73,6 +93,12 @@ export default function People({
     const filteredAdmins = admins.filter(a => 
         a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const filteredResponders = responders.filter(r => 
+        r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.phone_number?.includes(searchTerm)
     );
 
     // View user details
@@ -156,6 +182,47 @@ export default function People({
         }
     };
 
+    // Create new responder
+    const handleCreateResponder = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            setIsLoading(true);
+            const response = await axios.post('/admin/people/responder', newResponder);
+            
+            // Add to list
+            setResponders(prev => [response.data.responder, ...prev]);
+            setShowCreateResponderModal(false);
+            setNewResponder({ name: '', email: '', phone_number: '', password: '' });
+            
+            console.log('[PEOPLE] ✅ Responder created');
+        } catch (error: any) {
+            console.error('Failed to create responder:', error);
+            alert(error.response?.data?.message || 'Failed to create responder');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Toggle responder status
+    const handleToggleResponderStatus = async (responderId: number) => {
+        try {
+            setIsLoading(true);
+            const response = await axios.patch(`/admin/people/responder/${responderId}/toggle-status`);
+            
+            // Update local state
+            setResponders(prev => prev.map(r => 
+                r.id === responderId ? { ...r, email_verified: response.data.responder.email_verified } : r
+            ));
+            
+            console.log('[PEOPLE] ✅', response.data.message);
+        } catch (error: any) {
+            console.error('Failed to toggle responder status:', error);
+            alert(error.response?.data?.message || 'Failed to update responder status');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // Format date
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'Never';
@@ -183,7 +250,7 @@ export default function People({
                         </div>
 
                         {/* Stats Cards */}
-                        <div className="mb-6 grid gap-4 sm:grid-cols-4">
+                        <div className="mb-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Total Users</p>
                                 <p className="mt-1 text-2xl font-bold text-slate-800">{stats.totalUsers}</p>
@@ -195,6 +262,14 @@ export default function People({
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Admins</p>
                                 <p className="mt-1 text-2xl font-bold text-blue-600">{stats.totalAdmins}</p>
+                            </div>
+                            <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                                <p className="text-xs font-medium uppercase text-slate-500">Responders</p>
+                                <p className="mt-1 text-2xl font-bold text-indigo-600">{stats.totalResponders}</p>
+                            </div>
+                            <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+                                <p className="text-xs font-medium uppercase text-slate-500">Active Responders</p>
+                                <p className="mt-1 text-2xl font-bold text-green-600">{stats.activeResponders}</p>
                             </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Active Today</p>
@@ -227,6 +302,16 @@ export default function People({
                                     >
                                         🛡️ Admins ({admins.length})
                                     </button>
+                                    <button
+                                        onClick={() => setActiveTab('responders')}
+                                        className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                                            activeTab === 'responders'
+                                                ? 'bg-red-600 text-white'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        🚑 Responders ({responders.length})
+                                    </button>
                                 </div>
 
                                 <div className="flex gap-2">
@@ -248,6 +333,14 @@ export default function People({
                                             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
                                         >
                                             + Add Admin
+                                        </button>
+                                    )}
+                                    {activeTab === 'responders' && (
+                                        <button
+                                            onClick={() => setShowCreateResponderModal(true)}
+                                            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                                        >
+                                            + Add Responder
                                         </button>
                                     )}
                                 </div>
@@ -410,6 +503,78 @@ export default function People({
                                     </table>
                                 </div>
                             )}
+
+                            {/* Responders Table */}
+                            {activeTab === 'responders' && (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full text-left text-sm">
+                                        <thead className="border-b bg-slate-50 text-xs font-semibold uppercase text-slate-500">
+                                            <tr>
+                                                <th className="px-4 py-3">Responder</th>
+                                                <th className="px-4 py-3">Contact</th>
+                                                <th className="px-4 py-3">Status</th>
+                                                <th className="px-4 py-3">Created</th>
+                                                <th className="px-4 py-3">Last Login</th>
+                                                <th className="px-4 py-3">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {filteredResponders.length > 0 ? (
+                                                filteredResponders.map((responder) => (
+                                                    <tr key={responder.id} className="hover:bg-slate-50">
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-sm font-medium text-indigo-600">
+                                                                    {responder.name.charAt(0).toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="font-medium text-slate-800">{responder.name}</p>
+                                                                    <p className="text-xs text-slate-500">ID: {responder.id}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <p className="text-slate-700">{responder.email}</p>
+                                                            <p className="text-xs text-slate-500">{responder.phone_number || 'No phone'}</p>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                                responder.email_verified 
+                                                                    ? 'bg-emerald-100 text-emerald-700' 
+                                                                    : 'bg-red-100 text-red-700'
+                                                            }`}>
+                                                                <span className={`h-1.5 w-1.5 rounded-full ${responder.email_verified ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                                                {responder.email_verified ? 'Active' : 'Inactive'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-xs text-slate-500">{formatDate(responder.created_at)}</td>
+                                                        <td className="px-4 py-3 text-xs text-slate-500">{formatDate(responder.last_login_at)}</td>
+                                                        <td className="px-4 py-3">
+                                                            <button
+                                                                onClick={() => handleToggleResponderStatus(responder.id)}
+                                                                disabled={isLoading}
+                                                                className={`rounded px-2 py-1 text-xs font-medium ${
+                                                                    responder.email_verified
+                                                                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                                        : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                                                }`}
+                                                            >
+                                                                {responder.email_verified ? 'Deactivate' : 'Activate'}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                                                        No responders found
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </main>
@@ -540,6 +705,76 @@ export default function People({
                                     className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                                 >
                                     {isLoading ? 'Creating...' : 'Create Admin'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Responder Modal */}
+            {showCreateResponderModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCreateResponderModal(false)}>
+                    <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="mb-4 text-lg font-bold text-slate-800">Create Responder Account</h2>
+                        
+                        <form onSubmit={handleCreateResponder} className="space-y-4">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">Full Name</label>
+                                <input
+                                    type="text"
+                                    value={newResponder.name}
+                                    onChange={(e) => setNewResponder({ ...newResponder, name: e.target.value })}
+                                    required
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                                <input
+                                    type="email"
+                                    value={newResponder.email}
+                                    onChange={(e) => setNewResponder({ ...newResponder, email: e.target.value })}
+                                    required
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">Phone Number (Optional)</label>
+                                <input
+                                    type="tel"
+                                    value={newResponder.phone_number}
+                                    onChange={(e) => setNewResponder({ ...newResponder, phone_number: e.target.value })}
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+                                <input
+                                    type="password"
+                                    value={newResponder.password}
+                                    onChange={(e) => setNewResponder({ ...newResponder, password: e.target.value })}
+                                    required
+                                    minLength={8}
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-2 focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                                />
+                                <p className="mt-1 text-xs text-slate-500">Minimum 8 characters</p>
+                            </div>
+                            
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCreateResponderModal(false)}
+                                    className="flex-1 rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isLoading}
+                                    className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                >
+                                    {isLoading ? 'Creating...' : 'Create Responder'}
                                 </button>
                             </div>
                         </form>

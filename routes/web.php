@@ -92,6 +92,8 @@ Route::middleware([AdminMiddleware::class])->group(function () {
   Route::patch('admin/people/{id}/toggle-status', [PeopleController::class, 'toggleStatus'])->name('admin.people.toggleStatus');
   Route::post('admin/people/admin', [PeopleController::class, 'createAdmin'])->name('admin.people.createAdmin');
   Route::delete('admin/people/admin/{id}', [PeopleController::class, 'deleteAdmin'])->name('admin.people.deleteAdmin');
+  Route::post('admin/people/responder', [PeopleController::class, 'createResponder'])->name('admin.people.createResponder');
+  Route::patch('admin/people/responder/{id}/toggle-status', [PeopleController::class, 'toggleResponderStatus'])->name('admin.people.toggleResponderStatus');
 
   // Settings
   Route::get('admin/settings', [SettingsController::class, 'index'])->name('admin.settings');

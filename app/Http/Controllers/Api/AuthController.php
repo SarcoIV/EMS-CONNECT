@@ -51,6 +51,16 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Check if responder is active
+        if ($user->role === 'responder' && !$user->email_verified) {
+            return response()->json([
+                'message' => 'Your responder account is inactive. Please contact an administrator.',
+                'errors' => [
+                    'email' => ['Your responder account has been deactivated. Please contact an administrator to reactivate your account.']
+                ]
+            ], 422);
+        }
+
         // Check if email is verified (for community users)
         if ($user->role === 'community' && !$user->email_verified) {
             return response()->json([

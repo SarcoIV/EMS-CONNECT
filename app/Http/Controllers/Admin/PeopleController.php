@@ -54,11 +54,30 @@ class PeopleController extends Controller
                 ];
             });
 
+        // Get all responders
+        $responders = User::where('role', 'responder')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($responder) {
+                return [
+                    'id' => $responder->id,
+                    'name' => $responder->name,
+                    'email' => $responder->email,
+                    'phone_number' => $responder->phone_number,
+                    'role' => $responder->role,
+                    'email_verified' => $responder->email_verified,
+                    'created_at' => $responder->created_at?->toIso8601String(),
+                    'last_login_at' => $responder->last_login_at?->toIso8601String(),
+                ];
+            });
+
         // Get statistics
         $stats = [
             'totalUsers' => User::where('user_role', 'user')->count(),
             'verifiedUsers' => User::where('user_role', 'user')->where('email_verified', true)->count(),
             'totalAdmins' => User::where('user_role', 'admin')->count(),
+            'totalResponders' => User::where('role', 'responder')->count(),
+            'activeResponders' => User::where('role', 'responder')->where('email_verified', true)->count(),
             'activeToday' => User::where('last_login_at', '>=', now()->startOfDay())->count(),
         ];
 
@@ -70,6 +89,7 @@ class PeopleController extends Controller
             ],
             'users' => $users,
             'admins' => $admins,
+            'responders' => $responders,
             'stats' => $stats,
         ]);
     }
@@ -273,6 +293,108 @@ class PeopleController extends Controller
 
             return response()->json([
                 'message' => 'Failed to remove admin access',
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a new responder account.
+     */
+    public function createResponder(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'phone_number' => ['nullable', 'string', 'max:20'],
+            'password' => ['required', Password::min(8)],
+        ]);
+
+        try {
+            $authUser = $request->user();
+
+            if (!$authUser || !$authUser->isAdmin()) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $responder = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone_number' => $validated['phone_number'] ?? null,
+                'password' => Hash::make($validated['password']),
+                'user_role' => 'user', // Web role
+                'role' => 'responder', // Mobile app role
+                'email_verified' => true, // Active by default
+                'email_verified_at' => now(),
+            ]);
+
+            Log::info('[PEOPLE] New responder created', [
+                'new_responder_id' => $responder->id,
+                'created_by' => $authUser->id,
+            ]);
+
+            return response()->json([
+                'message' => 'Responder account created successfully',
+                'responder' => [
+                    'id' => $responder->id,
+                    'name' => $responder->name,
+                    'email' => $responder->email,
+                    'phone_number' => $responder->phone_number,
+                    'role' => $responder->role,
+                    'email_verified' => $responder->email_verified,
+                    'created_at' => $responder->created_at?->toIso8601String(),
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('[PEOPLE] Failed to create responder', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to create responder account',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle responder status (activate/deactivate).
+     */
+    public function toggleResponderStatus(Request $request, $id)
+    {
+        try {
+            $authUser = $request->user();
+
+            if (!$authUser || !$authUser->isAdmin()) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $responder = User::where('role', 'responder')->findOrFail($id);
+
+            // Toggle email_verified as activation status
+            $responder->email_verified = !$responder->email_verified;
+            $responder->save();
+
+            Log::info('[PEOPLE] Responder status toggled', [
+                'target_responder_id' => $responder->id,
+                'new_status' => $responder->email_verified ? 'active' : 'inactive',
+                'admin_id' => $authUser->id,
+            ]);
+
+            return response()->json([
+                'message' => $responder->email_verified ? 'Responder activated' : 'Responder deactivated',
+                'responder' => [
+                    'id' => $responder->id,
+                    'email_verified' => $responder->email_verified,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[PEOPLE] Failed to toggle responder status', [
+                'responder_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to update responder status',
             ], 500);
         }
     }
