@@ -18,23 +18,33 @@ class IncidentController extends Controller
      */
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'type' => ['required', 'in:medical,fire,accident,other'],
-            'location' => ['required', 'array'],
-            'location.latitude' => ['required', 'numeric', 'between:-90,90'],
-            'location.longitude' => ['required', 'numeric', 'between:-180,180'],
-            'location.address' => ['nullable', 'string', 'max:500'],
-            'description' => ['nullable', 'string', 'max:1000'],
+        // Support both flat format (mobile app) and nested format (backward compatibility)
+        $data = $request->all();
+        
+        // If location is nested, flatten it for validation
+        if (isset($data['location']) && is_array($data['location'])) {
+            $data['latitude'] = $data['location']['latitude'] ?? null;
+            $data['longitude'] = $data['location']['longitude'] ?? null;
+            $data['address'] = $data['location']['address'] ?? $data['address'] ?? null;
+        }
+
+        $validator = Validator::make($data, [
+            'type' => ['required', 'in:medical,fire,accident,crime,natural_disaster,other'],
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'address' => ['required', 'string', 'max:500'],
+            'description' => ['required', 'string', 'max:1000'],
         ], [
-            'type.required' => 'Emergency type is required.',
-            'type.in' => 'Invalid emergency type. Must be: medical, fire, accident, or other.',
-            'location.required' => 'Location is required.',
-            'location.latitude.required' => 'Latitude is required.',
-            'location.latitude.numeric' => 'Latitude must be a valid number.',
-            'location.latitude.between' => 'Latitude must be between -90 and 90.',
-            'location.longitude.required' => 'Longitude is required.',
-            'location.longitude.numeric' => 'Longitude must be a valid number.',
-            'location.longitude.between' => 'Longitude must be between -180 and 180.',
+            'type.required' => 'The type field is required.',
+            'type.in' => 'The selected type is invalid.',
+            'latitude.required' => 'The latitude field is required.',
+            'latitude.numeric' => 'The latitude must be a valid number.',
+            'latitude.between' => 'The latitude must be between -90 and 90.',
+            'longitude.required' => 'The longitude field is required.',
+            'longitude.numeric' => 'The longitude must be a valid number.',
+            'longitude.between' => 'The longitude must be between -180 and 180.',
+            'address.required' => 'The address field is required.',
+            'description.required' => 'The description field is required.',
         ]);
 
         if ($validator->fails()) {
@@ -49,31 +59,45 @@ class IncidentController extends Controller
 
             $incident = Incident::create([
                 'user_id' => $user->id,
-                'type' => $request->type,
+                'type' => $data['type'],
                 'status' => 'pending',
-                'latitude' => $request->input('location.latitude'),
-                'longitude' => $request->input('location.longitude'),
-                'address' => $request->input('location.address'),
-                'description' => $request->description,
+                'latitude' => $data['latitude'],
+                'longitude' => $data['longitude'],
+                'address' => $data['address'],
+                'description' => $data['description'],
             ]);
 
-            Log::info('Emergency incident created', [
+            Log::info('[INCIDENTS] 📍 New emergency incident created', [
                 'incident_id' => $incident->id,
                 'user_id' => $user->id,
+                'user_name' => $user->name,
                 'type' => $incident->type,
-                'location' => [
-                    'lat' => $incident->latitude,
-                    'lng' => $incident->longitude,
-                ],
+                'latitude' => $incident->latitude,
+                'longitude' => $incident->longitude,
+                'address' => $incident->address,
+                'created_at' => $incident->created_at?->toIso8601String(),
             ]);
 
             return response()->json([
-                'incident' => $this->formatIncident($incident),
-                'message' => 'Emergency alert sent successfully. Help is on the way!'
+                'message' => 'Incident reported successfully',
+                'incident' => [
+                    'id' => $incident->id,
+                    'type' => $incident->type,
+                    'status' => $incident->status,
+                    'latitude' => (float) $incident->latitude,
+                    'longitude' => (float) $incident->longitude,
+                    'address' => $incident->address,
+                    'description' => $incident->description,
+                    'created_at' => $incident->created_at?->toIso8601String(),
+                ],
             ], 201);
 
         } catch (\Exception $e) {
-            Log::error('Failed to create incident: ' . $e->getMessage());
+            Log::error('[INCIDENTS] ❌ Failed to create incident', [
+                'user_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
             return response()->json([
                 'message' => 'An error occurred while creating the emergency alert. Please try again.',
@@ -212,20 +236,14 @@ class IncidentController extends Controller
     {
         return [
             'id' => $incident->id,
-            'user_id' => $incident->user_id,
             'type' => $incident->type,
             'status' => $incident->status,
-            'location' => [
-                'latitude' => (float) $incident->latitude,
-                'longitude' => (float) $incident->longitude,
-                'address' => $incident->address,
-            ],
+            'latitude' => (float) $incident->latitude,
+            'longitude' => (float) $incident->longitude,
+            'address' => $incident->address,
             'description' => $incident->description,
-            'assigned_unit' => $incident->assigned_unit,
             'created_at' => $incident->created_at?->toIso8601String(),
-            'updated_at' => $incident->updated_at?->toIso8601String(),
-            'dispatched_at' => $incident->dispatched_at?->toIso8601String(),
-            'completed_at' => $incident->completed_at?->toIso8601String(),
         ];
     }
 }
+
