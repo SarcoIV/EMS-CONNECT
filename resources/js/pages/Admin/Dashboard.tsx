@@ -135,6 +135,32 @@ export default function AdminDashboard({
         };
     }, [fetchStats]);
 
+    // Dispatch incident (pending → dispatched)
+    const handleDispatch = async (incidentId: number) => {
+        if (!confirm('Are you sure you want to dispatch this incident? This will mark it as dispatched and lock it for response coordination.')) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            console.log('[DISPATCH] 🚑 Dispatching incident:', incidentId);
+            
+            const response = await axios.patch(`/admin/incidents/${incidentId}/dispatch`);
+            
+            // Refresh data
+            await fetchStats();
+            
+            console.log('[DISPATCH] ✅ Incident dispatched successfully:', response.data);
+            alert('Incident dispatched successfully!');
+        } catch (error: any) {
+            console.error('[DISPATCH] ❌ Failed to dispatch incident:', error);
+            const message = error.response?.data?.message || 'Failed to dispatch incident. Please try again.';
+            alert(message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     // Update incident status
     const handleUpdateStatus = async (incidentId: number, newStatus: string) => {
         try {
@@ -504,12 +530,12 @@ export default function AdminDashboard({
                                                             </a>
                                                             {incident.status === 'pending' && (
                                                                 <button
-                                                                    onClick={() => handleUpdateStatus(incident.id, 'dispatched')}
+                                                                    onClick={() => handleDispatch(incident.id)}
                                                                     disabled={isLoading}
-                                                                    className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-200 disabled:opacity-50"
-                                                                    title="Dispatch unit"
+                                                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+                                                                    title="Dispatch this incident (pending → dispatched)"
                                                                 >
-                                                                    Dispatch
+                                                                    🚑 Dispatch
                                                                 </button>
                                                             )}
                                                             {incident.status === 'dispatched' && (

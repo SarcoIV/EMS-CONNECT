@@ -304,4 +304,69 @@ class DashboardController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Dispatch an incident (pending → dispatched).
+     * 
+     * This is the admin workflow step: verify incident → dispatch.
+     */
+    public function dispatch(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user || !$user->isAdmin()) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $incident = Incident::findOrFail($id);
+
+            // Validate that incident is in pending status
+            if ($incident->status !== 'pending') {
+                return response()->json([
+                    'message' => 'Only pending incidents can be dispatched.',
+                    'errors' => [
+                        'status' => ['This incident has already been processed. Current status: ' . $incident->status]
+                    ]
+                ], 422);
+            }
+
+            // Update status to dispatched
+            $incident->status = 'dispatched';
+            $incident->dispatched_at = now();
+            $incident->assigned_admin_id = $user->id;
+            $incident->save();
+
+            Log::info('[DISPATCH] ✅ Incident dispatched', [
+                'incident_id' => $incident->id,
+                'incident_type' => $incident->type,
+                'reporter_id' => $incident->user_id,
+                'admin_id' => $user->id,
+                'admin_name' => $user->name,
+                'dispatched_at' => $incident->dispatched_at?->toIso8601String(),
+            ]);
+
+            return response()->json([
+                'message' => 'Incident dispatched successfully',
+                'incident' => [
+                    'id' => $incident->id,
+                    'status' => $incident->status,
+                    'dispatched_at' => $incident->dispatched_at?->toIso8601String(),
+                    'assigned_admin_id' => $incident->assigned_admin_id,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[DISPATCH] ❌ Failed to dispatch incident', [
+                'incident_id' => $id,
+                'admin_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to dispatch incident',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
 }

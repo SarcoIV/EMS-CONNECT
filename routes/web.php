@@ -74,6 +74,7 @@ Route::middleware([AdminMiddleware::class])->group(function () {
   Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
   Route::get('admin/dashboard/stats', [DashboardController::class, 'stats'])->name('admin.dashboard.stats');
   Route::patch('admin/incidents/{id}/status', [DashboardController::class, 'updateIncidentStatus'])->name('admin.incidents.updateStatus');
+  Route::patch('admin/incidents/{id}/dispatch', [DashboardController::class, 'dispatch'])->name('admin.incidents.dispatch');
 
   // Live Map
   Route::get('admin/live-map', [LiveMapController::class, 'index'])->name('admin.live-map');

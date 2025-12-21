@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
 import { router } from '@inertiajs/react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
+import axios from 'axios';
 
 interface User {
     id: number;
@@ -111,6 +112,7 @@ export default function IncidentReports({
     const [localFilters, setLocalFilters] = useState(filters);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     // Safely get incident data
     const incidentData: Incident[] = incidents && 'data' in incidents ? incidents.data : [];
@@ -143,6 +145,27 @@ export default function IncidentReports({
     const handleViewIncident = (incident: Incident) => {
         setSelectedIncident(incident);
         setShowDetailModal(true);
+    };
+
+    // Dispatch incident
+    const handleDispatch = async (incidentId: number) => {
+        if (!confirm('Are you sure you want to dispatch this incident? This will mark it as dispatched and lock it for response coordination.')) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            await axios.patch(`/admin/incidents/${incidentId}/dispatch`);
+            
+            // Refresh page data
+            handleFilter();
+            alert('Incident dispatched successfully!');
+        } catch (error: any) {
+            console.error('Failed to dispatch incident:', error);
+            alert(error.response?.data?.message || 'Failed to dispatch incident. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     // Format date
@@ -214,67 +237,67 @@ export default function IncidentReports({
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Pending</p>
                                 <p className="mt-1 text-2xl font-bold text-amber-600">{stats.pending}</p>
-                            </div>
+                                                        </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Dispatched</p>
                                 <p className="mt-1 text-2xl font-bold text-blue-600">{stats.dispatched}</p>
-                            </div>
+                                                            </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">In Progress</p>
                                 <p className="mt-1 text-2xl font-bold text-purple-600">{stats.in_progress}</p>
-                            </div>
+                                            </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Completed</p>
                                 <p className="mt-1 text-2xl font-bold text-emerald-600">{stats.completed}</p>
-                            </div>
+                                                </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Cancelled</p>
                                 <p className="mt-1 text-2xl font-bold text-slate-500">{stats.cancelled}</p>
-                            </div>
-                        </div>
+                                            </div>
+                                        </div>
 
                         {/* Charts Row */}
                         <div className="grid gap-6 lg:grid-cols-2">
                             {/* Trend Chart */}
                             <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <h3 className="mb-4 font-semibold text-slate-700">Incidents (Last 7 Days)</h3>
-                                <div className="h-48">
+                                        <div className="h-48">
                                     {trendData.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
+                                            <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                                <defs>
+                                                    <defs>
                                                     <linearGradient id="colorIncidents" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
                                                         <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                                                <XAxis
-                                                    dataKey="date"
-                                                    stroke="#64748b"
-                                                    style={{ fontSize: '11px' }}
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                                    <XAxis
+                                                        dataKey="date"
+                                                        stroke="#64748b"
+                                                        style={{ fontSize: '11px' }}
                                                     tickFormatter={(value) => formatShortDate(value)}
-                                                />
-                                                <YAxis stroke="#64748b" style={{ fontSize: '11px' }} />
-                                                <Tooltip
-                                                    contentStyle={{
-                                                        backgroundColor: 'white',
-                                                        border: '1px solid #e2e8f0',
-                                                        borderRadius: '8px',
-                                                        fontSize: '12px',
-                                                    }}
+                                                    />
+                                                    <YAxis stroke="#64748b" style={{ fontSize: '11px' }} />
+                                                    <Tooltip
+                                                        contentStyle={{
+                                                            backgroundColor: 'white',
+                                                            border: '1px solid #e2e8f0',
+                                                            borderRadius: '8px',
+                                                            fontSize: '12px',
+                                                        }}
                                                     formatter={(value) => [value ?? 0, 'Incidents']}
                                                     labelFormatter={(label) => formatShortDate(label)}
-                                                />
-                                                <Area
-                                                    type="monotone"
+                                                    />
+                                                    <Area
+                                                        type="monotone"
                                                     dataKey="count"
-                                                    stroke="#ef4444"
+                                                        stroke="#ef4444"
                                                     fill="url(#colorIncidents)"
                                                     strokeWidth={2}
-                                                />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
+                                                    />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
                                     ) : (
                                         <div className="flex h-full items-center justify-center text-slate-400">
                                             No trend data available
@@ -345,7 +368,7 @@ export default function IncidentReports({
                                         <option value="completed">Completed</option>
                                         <option value="cancelled">Cancelled</option>
                                     </select>
-                                </div>
+                                    </div>
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500">Type</label>
                                     <select
@@ -368,8 +391,8 @@ export default function IncidentReports({
                                         value={localFilters.date_from || ''}
                                         onChange={(e) => setLocalFilters({ ...localFilters, date_from: e.target.value })}
                                         className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-300 focus:outline-none"
-                                    />
-                                </div>
+                                            />
+                                        </div>
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500">Date To</label>
                                     <input
@@ -377,8 +400,8 @@ export default function IncidentReports({
                                         value={localFilters.date_to || ''}
                                         onChange={(e) => setLocalFilters({ ...localFilters, date_to: e.target.value })}
                                         className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-300 focus:outline-none"
-                                    />
-                                </div>
+                                            />
+                                        </div>
                                 <div className="flex-1">
                                     <label className="mb-1 block text-xs font-medium text-slate-500">Search</label>
                                     <input
@@ -478,6 +501,16 @@ export default function IncidentReports({
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                                                     </svg>
                                                                 </a>
+                                                            )}
+                                                            {incident.status === 'pending' && (
+                                                                <button
+                                                                    onClick={() => handleDispatch(incident.id)}
+                                                                    disabled={isLoading}
+                                                                    className="rounded-lg bg-blue-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+                                                                    title="Dispatch this incident"
+                                                                >
+                                                                    🚑 Dispatch
+                                                                </button>
                                                             )}
                                                         </div>
                                                     </td>
