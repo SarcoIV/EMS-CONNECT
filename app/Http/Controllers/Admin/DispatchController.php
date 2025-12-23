@@ -53,6 +53,11 @@ class DispatchController extends Controller
 
             // Render Inertia dispatch page
             return Inertia::render('Admin/Dispatch/index', [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
                 'incident' => [
                     'id' => $incident->id,
                     'type' => $incident->type,
