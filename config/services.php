@@ -56,4 +56,22 @@ return [
         'app_id' => env('AGORA_APP_ID', 'c81a013cd0db4defabcbdb7d005fe627'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | OpenRouteService Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for OpenRouteService API used for calculating road distances
+    | and travel times between incident locations and responder locations.
+    | This is used exclusively on the backend during admin dispatch operations.
+    |
+    | API Key is NEVER exposed to frontend or mobile applications.
+    |
+    */
+
+    'openrouteservice' => [
+        'api_key' => env('OPENROUTESERVICE_API_KEY'),
+        'base_url' => env('OPENROUTESERVICE_BASE_URL', 'https://api.openrouteservice.org/v2'),
+    ],
+
 ];

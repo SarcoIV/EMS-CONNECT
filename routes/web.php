@@ -60,6 +60,7 @@ use App\Http\Controllers\Admin\ArchiveController;
 use App\Http\Controllers\Admin\CallsController;
 use App\Http\Controllers\Admin\ChatsController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DispatchController;
 use App\Http\Controllers\Admin\HospitalDirectoryController;
 use App\Http\Controllers\Admin\IncidentReportsController;
 use App\Http\Controllers\Admin\LiveMapController;
@@ -75,6 +76,12 @@ Route::middleware([AdminMiddleware::class])->group(function () {
   Route::get('admin/dashboard/stats', [DashboardController::class, 'stats'])->name('admin.dashboard.stats');
   Route::patch('admin/incidents/{id}/status', [DashboardController::class, 'updateIncidentStatus'])->name('admin.incidents.updateStatus');
   Route::patch('admin/incidents/{id}/dispatch', [DashboardController::class, 'dispatch'])->name('admin.incidents.dispatch');
+
+  // Dispatch (Admin-controlled responder assignment)
+  Route::get('admin/dispatch/{id}', [DispatchController::class, 'show'])->name('admin.dispatch.show');
+  Route::get('admin/incidents/{id}/available-responders', [DispatchController::class, 'getAvailableResponders'])->name('admin.incidents.availableResponders');
+  Route::post('admin/dispatch/assign', [DispatchController::class, 'assignResponder'])->name('admin.dispatch.assign');
+  Route::post('admin/dispatch/{id}/cancel', [DispatchController::class, 'cancelDispatch'])->name('admin.dispatch.cancel');
 
   // Live Map
   Route::get('admin/live-map', [LiveMapController::class, 'index'])->name('admin.live-map');

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\IncidentController;
 use App\Http\Controllers\Api\CallController;
+use App\Http\Controllers\Api\ResponderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +61,24 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Cancel incident
         Route::post('/{id}/cancel', [IncidentController::class, 'cancel'])
+            ->where('id', '[0-9]+');
+    });
+
+    // -------------------------------------------------------------------------
+    // Responder Routes (Dispatch System)
+    // -------------------------------------------------------------------------
+    Route::prefix('responder')->group(function () {
+        // Update responder's real-time GPS location (when on duty)
+        Route::post('/location', [ResponderController::class, 'updateLocation']);
+
+        // Update responder's duty status (on/off duty, availability)
+        Route::post('/status', [ResponderController::class, 'updateStatus']);
+
+        // Get all dispatches assigned to this responder
+        Route::get('/dispatches', [ResponderController::class, 'getAssignedIncidents']);
+
+        // Update dispatch status (accept, en route, arrived, completed)
+        Route::post('/dispatches/{id}/status', [ResponderController::class, 'updateDispatchStatus'])
             ->where('id', '[0-9]+');
     });
 

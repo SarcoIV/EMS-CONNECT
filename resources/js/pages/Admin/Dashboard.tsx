@@ -529,14 +529,13 @@ export default function AdminDashboard({
                                                                 </svg>
                                                             </a>
                                                             {incident.status === 'pending' && (
-                                                                <button
-                                                                    onClick={() => handleDispatch(incident.id)}
-                                                                    disabled={isLoading}
-                                                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-                                                                    title="Dispatch this incident (pending → dispatched)"
+                                                                <a
+                                                                    href={`/admin/dispatch/${incident.id}`}
+                                                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 inline-block"
+                                                                    title="Select responders and dispatch"
                                                                 >
                                                                     🚑 Dispatch
-                                                                </button>
+                                                                </a>
                                                             )}
                                                             {incident.status === 'dispatched' && (
                                                                 <button

@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -35,6 +36,16 @@ class User extends Authenticatable
         'verification_code_expires_at',
         'email_verified',
         'email_verified_at',
+        'base_latitude',
+        'base_longitude',
+        'base_address',
+        'current_latitude',
+        'current_longitude',
+        'location_updated_at',
+        'responder_status',
+        'is_on_duty',
+        'duty_started_at',
+        'duty_ended_at',
     ];
 
     /**
@@ -60,6 +71,14 @@ class User extends Authenticatable
             'verification_code_expires_at' => 'datetime',
             'last_login_at' => 'datetime',
             'password' => 'hashed',
+            'base_latitude' => 'decimal:8',
+            'base_longitude' => 'decimal:8',
+            'current_latitude' => 'decimal:8',
+            'current_longitude' => 'decimal:8',
+            'location_updated_at' => 'datetime',
+            'is_on_duty' => 'boolean',
+            'duty_started_at' => 'datetime',
+            'duty_ended_at' => 'datetime',
         ];
     }
 
@@ -125,5 +144,83 @@ class User extends Authenticatable
     public function receiverCalls(): HasMany
     {
         return $this->hasMany(Call::class, 'receiver_admin_id');
+    }
+
+    /**
+     * Get all dispatch assignments for this responder
+     */
+    public function dispatches(): HasMany
+    {
+        return $this->hasMany(Dispatch::class, 'responder_id');
+    }
+
+    /**
+     * Get all incidents assigned to this responder (many-to-many via dispatches)
+     */
+    public function assignedIncidentsAsResponder(): BelongsToMany
+    {
+        return $this->belongsToMany(Incident::class, 'dispatches', 'responder_id', 'incident_id')
+                    ->withPivot([
+                        'status',
+                        'distance_meters',
+                        'estimated_duration_seconds',
+                        'assigned_at',
+                        'accepted_at',
+                        'en_route_at',
+                        'arrived_at',
+                        'completed_at',
+                    ])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Check if responder is available for dispatch
+     */
+    public function isAvailableForDispatch(): bool
+    {
+        return $this->isResponder()
+            && $this->email_verified
+            && $this->is_on_duty
+            && $this->responder_status === 'idle';
+    }
+
+    /**
+     * Check if responder has current location data
+     */
+    public function hasLocation(): bool
+    {
+        return !is_null($this->current_latitude) && !is_null($this->current_longitude);
+    }
+
+    /**
+     * Get formatted current location array
+     */
+    public function getLocationAttribute(): ?array
+    {
+        if (!$this->hasLocation()) {
+            return null;
+        }
+
+        return [
+            'latitude' => (float) $this->current_latitude,
+            'longitude' => (float) $this->current_longitude,
+            'updated_at' => $this->location_updated_at,
+        ];
+    }
+
+    /**
+     * Get formatted base location array
+     */
+    public function getBaseLocationAttribute(): ?array
+    {
+        if (is_null($this->base_latitude) || is_null($this->base_longitude)) {
+            return null;
+        }
+
+        return [
+            'latitude' => (float) $this->base_latitude,
+            'longitude' => (float) $this->base_longitude,
+            'address' => $this->base_address,
+        ];
     }
 }
