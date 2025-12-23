@@ -41,6 +41,18 @@ export default function DispatchMap({ incident, selectedResponder }: DispatchMap
     const responderMarkerRef = useRef<any>(null);
     const [mapLoaded, setMapLoaded] = useState(false);
 
+    // Add Leaflet CSS
+    useEffect(() => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+        document.head.appendChild(link);
+
+        return () => {
+            document.head.removeChild(link);
+        };
+    }, []);
+
     // Initialize map
     useEffect(() => {
         const initMap = async () => {
@@ -67,22 +79,22 @@ export default function DispatchMap({ incident, selectedResponder }: DispatchMap
                     className: 'custom-div-icon',
                     html: `
                         <div style="
-                            background-color: #ef4444;
-                            width: 40px;
-                            height: 40px;
+                            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                            width: 48px;
+                            height: 48px;
                             border-radius: 50%;
-                            border: 3px solid white;
+                            border: 4px solid white;
                             display: flex;
                             align-items: center;
                             justify-content: center;
-                            font-size: 20px;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                            font-size: 24px;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 4px rgba(239, 68, 68, 0.2);
                         ">
                             ${typeIcons[incident.type] || '⚠️'}
                         </div>
                     `,
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20],
+                    iconSize: [48, 48],
+                    iconAnchor: [24, 24],
                 });
 
                 const incidentMarker = L.marker([incident.latitude, incident.longitude], {
@@ -140,22 +152,22 @@ export default function DispatchMap({ incident, selectedResponder }: DispatchMap
                         className: 'custom-div-icon',
                         html: `
                             <div style="
-                                background-color: #3b82f6;
-                                width: 36px;
-                                height: 36px;
+                                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                                width: 42px;
+                                height: 42px;
                                 border-radius: 50%;
-                                border: 3px solid white;
+                                border: 4px solid white;
                                 display: flex;
                                 align-items: center;
                                 justify-content: center;
-                                font-size: 18px;
-                                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                                font-size: 22px;
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 4px rgba(59, 130, 246, 0.2);
                             ">
                                 🚑
                             </div>
                         `,
-                        iconSize: [36, 36],
-                        iconAnchor: [18, 18],
+                        iconSize: [42, 42],
+                        iconAnchor: [21, 21],
                     });
 
                     const responderMarker = L.marker([responderLat, responderLon], {
@@ -190,27 +202,6 @@ export default function DispatchMap({ incident, selectedResponder }: DispatchMap
     }, [selectedResponder, mapLoaded, incident]);
 
     return (
-        <div className="relative w-full h-full rounded-lg overflow-hidden shadow-lg border border-gray-200">
-            <div ref={mapContainerRef} className="w-full h-full" />
-
-            {/* Legend */}
-            <div className="absolute top-4 left-4 bg-white rounded-lg shadow-md p-3 text-xs z-[1000]">
-                <div className="font-semibold text-gray-700 mb-2">Map Legend</div>
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white text-sm">
-                        {typeIcons[incident.type]}
-                    </div>
-                    <span className="text-gray-600">Incident Location</span>
-                </div>
-                {selectedResponder && (
-                    <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-sm">
-                            🚑
-                        </div>
-                        <span className="text-gray-600">Selected Responder</span>
-                    </div>
-                )}
-            </div>
-        </div>
+        <div ref={mapContainerRef} className="w-full h-full" />
     );
 }

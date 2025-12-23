@@ -70,7 +70,26 @@ interface DispatchProps {
     incident: Incident;
 }
 
-const POLL_INTERVAL = 10000; // Refresh responders every 10 seconds
+// Status color coding
+const statusColors: Record<string, string> = {
+    pending: '#f59e0b',
+    dispatched: '#3b82f6',
+    in_progress: '#8b5cf6',
+    completed: '#10b981',
+    cancelled: '#6b7280',
+};
+
+// Incident type icons
+const typeIcons: Record<string, string> = {
+    medical: '🏥',
+    fire: '🔥',
+    accident: '🚗',
+    crime: '🚨',
+    natural_disaster: '🌊',
+    other: '⚠️',
+};
+
+const POLL_INTERVAL = 5000; // Refresh responders every 5 seconds
 
 export default function Dispatch({ user, incident }: DispatchProps) {
     const [responders, setResponders] = useState<Responder[]>([]);
@@ -164,32 +183,112 @@ export default function Dispatch({ user, incident }: DispatchProps) {
                 {/* Incoming Call Notification */}
                 <IncomingCallNotification user={user} />
 
-                <main className="flex-1 flex flex-col p-6 overflow-hidden bg-gradient-to-br from-slate-50 to-red-50/30">
-                    {/* Page Header */}
-                    <div className="mb-4">
-                        <h1 className="text-2xl font-bold text-gray-900">Dispatch Responder</h1>
-                        <p className="text-sm text-gray-600 mt-1">
-                            Select a responder to assign to incident #{incident.id} ({incident.type})
-                        </p>
-                    </div>
-
-                    {/* Error Message */}
-                    {error && (
-                        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-sm text-red-800">{error}</p>
-                        </div>
-                    )}
-
-                    {/* TOP: Map Section (60% height) */}
-                    <div className="h-3/5 mb-4">
+                <main className="relative flex-1 bg-gradient-to-br from-slate-50 to-red-50/30">
+                    {/* Full-screen map */}
+                    <div className="h-full w-full">
                         <DispatchMap
                             incident={incident}
                             selectedResponder={selectedResponder}
                         />
                     </div>
 
-                    {/* BOTTOM: Responders List (40% height) */}
-                    <div className="h-2/5">
+                    {/* Incident Info Panel - Top Left */}
+                    <div className="absolute left-4 top-4 z-[1000] rounded-xl bg-white p-4 shadow-xl max-w-md">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="text-2xl">{typeIcons[incident.type]}</span>
+                            <div>
+                                <h3 className="font-bold text-slate-800">
+                                    {incident.type.toUpperCase()} - #{incident.id}
+                                </h3>
+                                <span className="text-xs text-slate-500">
+                                    {incident.address}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Status badge */}
+                        <div className="mb-3">
+                            <span
+                                className="rounded-full px-3 py-1 text-xs font-medium"
+                                style={{
+                                    backgroundColor: `${statusColors[incident.status]}20`,
+                                    color: statusColors[incident.status],
+                                }}
+                            >
+                                {incident.status.toUpperCase()}
+                            </span>
+                        </div>
+
+                        {/* Incident details */}
+                        <div className="space-y-2 text-sm">
+                            <div>
+                                <p className="text-xs text-slate-500">Reporter</p>
+                                <p className="font-medium">{incident.user.name}</p>
+                                <p className="text-xs text-slate-500">{incident.user.phone_number}</p>
+                            </div>
+                            {incident.description && (
+                                <div>
+                                    <p className="text-xs text-slate-500">Description</p>
+                                    <p className="text-slate-700">{incident.description}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Legend Panel - Bottom Left */}
+                    <div className="absolute bottom-4 left-4 z-[1000] rounded-xl bg-white p-3 shadow-lg">
+                        <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Legend</div>
+                        <div className="space-y-1 text-xs">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-sm">
+                                    {typeIcons[incident.type]}
+                                </div>
+                                <span className="text-slate-700">Incident Location</span>
+                            </div>
+                            {selectedResponder && (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-sm">
+                                        🚑
+                                    </div>
+                                    <span className="text-slate-700">Selected Responder</span>
+                                </div>
+                            )}
+                            <div className="mt-2 pt-2 border-t border-slate-200">
+                                <div className="flex items-center gap-2">
+                                    <span className="h-3 w-3 rounded-full bg-green-600"></span>
+                                    <span className="text-slate-600">Nearest</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Error Toast - Top Center */}
+                    {error && (
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1001] max-w-md rounded-xl bg-red-50 border-2 border-red-200 p-4 shadow-xl">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-sm font-semibold text-red-800">Error</h3>
+                                    <p className="text-sm text-red-700 mt-1">{error}</p>
+                                </div>
+                                <button
+                                    onClick={() => setError(null)}
+                                    className="flex-shrink-0 text-red-400 hover:text-red-600"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Responders Panel - Bottom Right */}
+                    <div className="absolute bottom-4 right-4 z-[1000] w-96 max-h-[60vh] rounded-xl bg-white shadow-lg">
                         <RespondersList
                             responders={responders}
                             selectedResponder={selectedResponder}

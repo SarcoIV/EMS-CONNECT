@@ -44,9 +44,9 @@ export default function RespondersList({
     const closestResponder = responders.length > 0 ? responders[0] : null;
 
     return (
-        <div className="bg-white rounded-lg shadow-lg border border-gray-200 h-full flex flex-col">
+        <div className="bg-white rounded-xl h-full flex flex-col">
             {/* Header */}
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+            <div className="sticky top-0 bg-white rounded-t-xl p-3 border-b border-gray-200 z-10 flex justify-between items-center">
                 <div>
                     <h2 className="text-lg font-semibold text-gray-900">Available Responders</h2>
                     <p className="text-sm text-gray-600">
@@ -69,7 +69,7 @@ export default function RespondersList({
             </div>
 
             {/* Responders List */}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-3 max-h-[calc(60vh-140px)]">
                 {isLoadingResponders ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="text-center">
@@ -88,7 +88,7 @@ export default function RespondersList({
                         </div>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         {responders.map((responder, index) => {
                             const isSelected = selectedResponder?.id === responder.id;
                             const isClosest = closestResponder?.id === responder.id;
@@ -96,13 +96,22 @@ export default function RespondersList({
                             return (
                                 <div
                                     key={responder.id}
-                                    className={`p-4 rounded-lg border-2 transition cursor-pointer ${
+                                    className={`p-3 rounded-lg border-2 transition cursor-pointer relative ${
                                         isSelected
                                             ? 'border-blue-500 bg-blue-50'
                                             : 'border-gray-200 bg-white hover:border-gray-300'
                                     }`}
                                     onClick={() => onSelectResponder(responder)}
                                 >
+                                    {/* Selection checkmark */}
+                                    {isSelected && (
+                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    )}
+
                                     <div className="flex items-start justify-between">
                                         {/* Left: Responder Info */}
                                         <div className="flex-1">
