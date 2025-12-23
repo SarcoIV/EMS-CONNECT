@@ -46,10 +46,49 @@ interface ActiveCall {
     };
 }
 
+interface Responder {
+    id: number;
+    name: string;
+    email: string;
+    phone_number: string;
+    current_latitude: number | null;
+    current_longitude: number | null;
+    base_latitude: number | null;
+    base_longitude: number | null;
+    responder_status: string;
+    is_on_duty: boolean;
+    location_updated_at: string | null;
+}
+
+interface Dispatch {
+    id: number;
+    incident_id: number;
+    responder_id: number;
+    status: string;
+    distance_meters: number;
+    distance_text: string;
+    duration_text: string;
+    assigned_at: string;
+    accepted_at: string | null;
+    en_route_at: string | null;
+    arrived_at: string | null;
+    responder: Responder | null;
+    incident: {
+        id: number;
+        type: string;
+        status: string;
+        latitude: number;
+        longitude: number;
+        address: string;
+    } | null;
+}
+
 interface LiveMapProps {
     user: { name: string; email: string };
     incidents: Incident[];
     activeCalls: ActiveCall[];
+    activeDispatches: Dispatch[];
+    activeResponders: Responder[];
     focusedIncidentId?: number;
 }
 
@@ -63,6 +102,26 @@ const statusColors: Record<string, string> = {
     cancelled: '#6b7280',
 };
 
+// Responder status colors
+const responderStatusColors: Record<string, string> = {
+    idle: '#10b981',        // Green
+    assigned: '#f59e0b',    // Amber
+    en_route: '#3b82f6',    // Blue
+    arrived: '#8b5cf6',     // Purple
+    busy: '#ef4444',        // Red
+    offline: '#6b7280',     // Gray
+};
+
+// Dispatch status colors
+const dispatchStatusColors: Record<string, string> = {
+    assigned: '#f59e0b',    // Amber
+    accepted: '#3b82f6',    // Blue
+    en_route: '#3b82f6',    // Blue
+    arrived: '#8b5cf6',     // Purple
+    completed: '#10b981',   // Green
+    cancelled: '#6b7280',   // Gray
+};
+
 // Marker colors by type
 const typeIcons: Record<string, string> = {
     medical: '🏥',
@@ -73,15 +132,20 @@ const typeIcons: Record<string, string> = {
     other: '⚠️',
 };
 
-export default function LiveMap({ 
-    user, 
-    incidents: initialIncidents, 
+export default function LiveMap({
+    user,
+    incidents: initialIncidents,
     activeCalls: initialCalls,
-    focusedIncidentId 
+    activeDispatches: initialDispatches,
+    activeResponders: initialResponders,
+    focusedIncidentId
 }: LiveMapProps) {
     const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
     const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(initialCalls);
+    const [activeDispatches, setActiveDispatches] = useState<Dispatch[]>(initialDispatches);
+    const [activeResponders, setActiveResponders] = useState<Responder[]>(initialResponders);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+    const [selectedDispatch, setSelectedDispatch] = useState<Dispatch | null>(null);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterType, setFilterType] = useState<string>('all');
     const [showOnlyActive, setShowOnlyActive] = useState(false);
@@ -89,6 +153,8 @@ export default function LiveMap({
     const mapRef = useRef<any>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const markersRef = useRef<any[]>([]);
+    const responderMarkersRef = useRef<any[]>([]);
+    const routeLinesRef = useRef<any[]>([]);
 
     // Filter incidents
     const filteredIncidents = incidents.filter(incident => {
@@ -103,13 +169,16 @@ export default function LiveMap({
         try {
             console.log('[LIVEMAP] 🔄 Refreshing map data...');
             const response = await axios.get('/admin/live-map/data');
-            
+
             setIncidents(response.data.incidents);
             setActiveCalls(response.data.activeCalls);
+            setActiveDispatches(response.data.activeDispatches || []);
+            setActiveResponders(response.data.activeResponders || []);
             setLastUpdated(new Date());
 
             // Update markers on map
             updateMarkers(response.data.incidents);
+            updateResponderMarkersAndRoutes(response.data.activeDispatches || [], response.data.activeResponders || []);
         } catch (error) {
             console.error('[LIVEMAP] ❌ Failed to fetch map data:', error);
         }
@@ -240,6 +309,163 @@ export default function LiveMap({
         });
     };
 
+    // Update responder markers and routes
+    const updateResponderMarkersAndRoutes = async (dispatches: Dispatch[], responders: Responder[]) => {
+        if (!mapRef.current) return;
+
+        const L = (await import('leaflet')).default;
+
+        // Clear existing responder markers and routes
+        responderMarkersRef.current.forEach(marker => marker.remove());
+        responderMarkersRef.current = [];
+        routeLinesRef.current.forEach(line => line.remove());
+        routeLinesRef.current = [];
+
+        // Add responder markers and routes for active dispatches
+        dispatches.forEach(dispatch => {
+            if (!dispatch.responder || !dispatch.incident) return;
+
+            const responder = dispatch.responder;
+            const incident = dispatch.incident;
+
+            // Get responder location (current or base)
+            const responderLat = responder.current_latitude ?? responder.base_latitude;
+            const responderLon = responder.current_longitude ?? responder.base_longitude;
+
+            if (!responderLat || !responderLon) return;
+
+            // Create responder marker
+            const iconHtml = `
+                <div style="
+                    background: linear-gradient(135deg, ${responderStatusColors[responder.responder_status] || '#6b7280'} 0%, ${responderStatusColors[responder.responder_status] || '#6b7280'} 100%);
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 4px solid white;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 0 4px ${responderStatusColors[responder.responder_status]}40;
+                    font-size: 18px;
+                    ${dispatch.status === 'en_route' ? 'animation: pulse 2s infinite;' : ''}
+                ">
+                    🚑
+                </div>
+                ${dispatch.status === 'en_route' ? '<div style="position:absolute;top:-6px;right:-6px;width:14px;height:14px;background:#3b82f6;border-radius:50%;border:2px solid white;animation:pulse 1.5s infinite;"></div>' : ''}
+            `;
+
+            const icon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-marker',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+            });
+
+            const marker = L.marker([responderLat, responderLon], { icon })
+                .addTo(mapRef.current);
+
+            // Add popup with dispatch details
+            const popupContent = `
+                <div style="min-width: 220px;">
+                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px;">
+                        🚑 ${responder.name}
+                    </div>
+                    <div style="display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${dispatchStatusColors[dispatch.status]}30; color: ${dispatchStatusColors[dispatch.status]}; margin-bottom: 8px;">
+                        ${dispatch.status.toUpperCase().replace('_', ' ')}
+                    </div>
+                    <div style="margin-top: 8px; font-size: 12px;">
+                        <strong>Going to:</strong> ${incident.address || 'Incident #' + incident.id}<br/>
+                        <strong>Type:</strong> ${typeIcons[incident.type]} ${incident.type.replace('_', ' ')}<br/>
+                        <strong>Distance:</strong> ${dispatch.distance_text}<br/>
+                        <strong>ETA:</strong> ${dispatch.duration_text}<br/>
+                        <strong>Phone:</strong> ${responder.phone_number}
+                    </div>
+                    ${responder.location_updated_at ? `<div style="margin-top: 8px; font-size: 11px; color: #666;">
+                        Location updated: ${new Date(responder.location_updated_at).toLocaleTimeString()}
+                    </div>` : ''}
+                </div>
+            `;
+
+            marker.bindPopup(popupContent);
+            marker.on('click', () => setSelectedDispatch(dispatch));
+
+            responderMarkersRef.current.push(marker);
+
+            // Draw route line from responder to incident
+            const routeLine = L.polyline([
+                [responderLat, responderLon],
+                [incident.latitude, incident.longitude]
+            ], {
+                color: dispatchStatusColors[dispatch.status] || '#3b82f6',
+                weight: 3,
+                opacity: 0.6,
+                dashArray: dispatch.status === 'en_route' ? '10, 10' : '5, 5',
+            }).addTo(mapRef.current);
+
+            routeLinesRef.current.push(routeLine);
+        });
+
+        // Add markers for idle responders (not in active dispatch)
+        const dispatchedResponderIds = new Set(dispatches.map(d => d.responder_id));
+        const idleResponders = responders.filter(r => !dispatchedResponderIds.has(r.id));
+
+        idleResponders.forEach(responder => {
+            const responderLat = responder.current_latitude ?? responder.base_latitude;
+            const responderLon = responder.current_longitude ?? responder.base_longitude;
+
+            if (!responderLat || !responderLon) return;
+
+            // Create idle responder marker (smaller, green)
+            const iconHtml = `
+                <div style="
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 3px solid white;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                    font-size: 16px;
+                ">
+                    🚑
+                </div>
+            `;
+
+            const icon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-marker',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+            });
+
+            const marker = L.marker([responderLat, responderLon], { icon })
+                .addTo(mapRef.current);
+
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 6px;">
+                        🚑 ${responder.name}
+                    </div>
+                    <div style="display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #10b98130; color: #10b981; margin-bottom: 8px;">
+                        IDLE - AVAILABLE
+                    </div>
+                    <div style="margin-top: 8px; font-size: 12px;">
+                        <strong>Phone:</strong> ${responder.phone_number}<br/>
+                        <strong>Email:</strong> ${responder.email}
+                    </div>
+                    ${responder.location_updated_at ? `<div style="margin-top: 8px; font-size: 11px; color: #666;">
+                        Location updated: ${new Date(responder.location_updated_at).toLocaleTimeString()}
+                    </div>` : ''}
+                </div>
+            `;
+
+            marker.bindPopup(popupContent);
+            responderMarkersRef.current.push(marker);
+        });
+    };
+
     // Set up polling
     useEffect(() => {
         console.log('[LIVEMAP] 🚀 Starting real-time map updates');
@@ -344,6 +570,7 @@ export default function LiveMap({
                         <div className="rounded-xl bg-white p-3 shadow-lg">
                             <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Legend</div>
                             <div className="space-y-1 text-xs">
+                                <div className="font-medium text-slate-700 mt-1 mb-1">Incidents:</div>
                                 <div className="flex items-center gap-2">
                                     <span className="h-3 w-3 rounded-full" style={{ backgroundColor: statusColors.pending }} />
                                     <span>Pending</span>
@@ -359,6 +586,19 @@ export default function LiveMap({
                                 <div className="flex items-center gap-2">
                                     <span className="h-3 w-3 rounded-full bg-red-500" />
                                     <span>Active Call</span>
+                                </div>
+                                <div className="font-medium text-slate-700 mt-2 mb-1">Responders:</div>
+                                <div className="flex items-center gap-2">
+                                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: responderStatusColors.idle }} />
+                                    <span>🚑 Idle</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: responderStatusColors.en_route }} />
+                                    <span>🚑 En Route</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: responderStatusColors.arrived }} />
+                                    <span>🚑 Arrived</span>
                                 </div>
                             </div>
                         </div>
@@ -381,8 +621,16 @@ export default function LiveMap({
                                 <p className="text-xs text-slate-500">Active Calls</p>
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-slate-600">{filteredIncidents.length}</p>
-                                <p className="text-xs text-slate-500">Shown</p>
+                                <p className="text-2xl font-bold text-green-600">{activeResponders.length}</p>
+                                <p className="text-xs text-slate-500">On Duty</p>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-purple-600">{activeDispatches.filter(d => d.status === 'en_route').length}</p>
+                                <p className="text-xs text-slate-500">En Route</p>
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-indigo-600">{activeDispatches.filter(d => d.status === 'arrived').length}</p>
+                                <p className="text-xs text-slate-500">Arrived</p>
                             </div>
                         </div>
                         <div className="mt-2 text-center text-xs text-slate-400">
