@@ -86,6 +86,7 @@ Route::middleware([AdminMiddleware::class])->group(function () {
   // Live Map
   Route::get('admin/live-map', [LiveMapController::class, 'index'])->name('admin.live-map');
   Route::get('admin/live-map/data', [LiveMapController::class, 'data'])->name('admin.live-map.data');
+  Route::get('admin/dispatches/{id}/route-history', [LiveMapController::class, 'getRouteHistory'])->name('admin.dispatch.route-history');
 
   // Incident Reports
   Route::get('admin/incident-reports', [IncidentReportsController::class, 'index'])->name('admin.incident-reports');

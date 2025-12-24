@@ -155,6 +155,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the currently active dispatch for this responder (if any)
+     */
+    public function activeDispatch()
+    {
+        return $this->hasOne(Dispatch::class, 'responder_id')
+            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+            ->latest('assigned_at');
+    }
+
+    /**
      * Get all incidents assigned to this responder (many-to-many via dispatches)
      */
     public function assignedIncidentsAsResponder(): BelongsToMany

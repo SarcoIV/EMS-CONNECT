@@ -181,8 +181,8 @@ class LiveMapController extends Controller
                 'responder_id' => $dispatch->responder_id,
                 'status' => $dispatch->status,
                 'distance_meters' => $dispatch->distance_meters,
-                'distance_text' => $dispatch->distance_text ?? 'N/A',
-                'duration_text' => $dispatch->duration_text ?? 'N/A',
+                'distance_text' => $dispatch->formatted_distance,
+                'duration_text' => $dispatch->formatted_duration,
                 'assigned_at' => $dispatch->assigned_at?->toIso8601String(),
                 'accepted_at' => $dispatch->accepted_at?->toIso8601String(),
                 'en_route_at' => $dispatch->en_route_at?->toIso8601String(),
@@ -243,6 +243,60 @@ class LiveMapController extends Controller
                 'location_updated_at' => $responder->location_updated_at?->toIso8601String(),
             ];
         })->toArray();
+    }
+
+    /**
+     * Get GPS breadcrumb trail for a specific dispatch.
+     * Shows the route history of a responder during an active dispatch.
+     *
+     * GET /admin/dispatches/{id}/route-history
+     */
+    public function getRouteHistory(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user || !$user->isAdmin()) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            // Verify dispatch exists
+            $dispatch = \App\Models\Dispatch::findOrFail($id);
+
+            // Get location history for this dispatch
+            $history = \App\Models\ResponderLocationHistory::where('dispatch_id', $id)
+                ->orderBy('created_at', 'ASC')
+                ->get(['latitude', 'longitude', 'accuracy', 'created_at']);
+
+            Log::info('[LIVEMAP] Fetched route history', [
+                'dispatch_id' => $id,
+                'point_count' => $history->count(),
+                'admin_id' => $user->id,
+            ]);
+
+            return response()->json([
+                'dispatch_id' => (int) $id,
+                'responder_id' => $dispatch->responder_id,
+                'incident_id' => $dispatch->incident_id,
+                'route_points' => $history->map(function ($point) {
+                    return [
+                        'latitude' => (float) $point->latitude,
+                        'longitude' => (float) $point->longitude,
+                        'accuracy' => $point->accuracy ? (float) $point->accuracy : null,
+                        'timestamp' => $point->created_at->toIso8601String(),
+                    ];
+                }),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[LIVEMAP] Failed to fetch route history', [
+                'dispatch_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to fetch route history',
+            ], 500);
+        }
     }
 }
 

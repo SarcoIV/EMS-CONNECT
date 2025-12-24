@@ -62,11 +62,25 @@ class ResponderController extends Controller
             $user->location_updated_at = now();
             $user->save();
 
+            // Store location history if responder has active dispatch
+            $activeDispatch = $user->activeDispatch;
+            if ($activeDispatch) {
+                \App\Models\ResponderLocationHistory::create([
+                    'responder_id' => $user->id,
+                    'dispatch_id' => $activeDispatch->id,
+                    'latitude' => $validated['latitude'],
+                    'longitude' => $validated['longitude'],
+                    'accuracy' => null, // Mobile app can send this if available
+                ]);
+            }
+
             Log::info('[RESPONDER] 📍 Location updated', [
                 'responder_id' => $user->id,
                 'responder_name' => $user->name,
                 'latitude' => $validated['latitude'],
                 'longitude' => $validated['longitude'],
+                'has_active_dispatch' => $activeDispatch !== null,
+                'dispatch_id' => $activeDispatch?->id,
             ]);
 
             return response()->json([
