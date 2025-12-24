@@ -81,6 +81,8 @@ class ResponderController extends Controller
                 'longitude' => $validated['longitude'],
                 'has_active_dispatch' => $activeDispatch !== null,
                 'dispatch_id' => $activeDispatch?->id,
+                'request_ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
             ]);
 
             return response()->json([
@@ -95,6 +97,10 @@ class ResponderController extends Controller
             Log::error('[RESPONDER] ❌ Failed to update location', [
                 'responder_id' => $request->user()?->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'request_data' => $request->all(),
             ]);
 
             return response()->json([
@@ -165,6 +171,10 @@ class ResponderController extends Controller
             Log::error('[RESPONDER] ❌ Failed to update status', [
                 'responder_id' => $request->user()?->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'request_data' => $request->all(),
             ]);
 
             return response()->json([
@@ -241,6 +251,9 @@ class ResponderController extends Controller
             Log::error('[RESPONDER] ❌ Failed to fetch dispatches', [
                 'responder_id' => $request->user()?->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             return response()->json([
@@ -303,6 +316,10 @@ class ResponderController extends Controller
                 'dispatch_id' => $id,
                 'responder_id' => $request->user()?->id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'request_data' => $request->all(),
             ]);
 
             return response()->json([

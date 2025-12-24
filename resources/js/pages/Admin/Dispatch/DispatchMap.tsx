@@ -17,6 +17,7 @@ interface Responder {
     base_longitude: number | null;
     distance_text: string;
     duration_text: string;
+    route_coordinates?: [number, number][] | null;
 }
 
 interface DispatchMapProps {
@@ -39,6 +40,7 @@ export default function DispatchMap({ incident, selectedResponder }: DispatchMap
     const mapRef = useRef<any>(null);
     const incidentMarkerRef = useRef<any>(null);
     const responderMarkerRef = useRef<any>(null);
+    const routePolylineRef = useRef<any>(null);
     const [mapLoaded, setMapLoaded] = useState(false);
 
     // Add Leaflet CSS
@@ -141,6 +143,12 @@ export default function DispatchMap({ incident, selectedResponder }: DispatchMap
                 responderMarkerRef.current = null;
             }
 
+            // Remove existing route line
+            if (routePolylineRef.current) {
+                mapRef.current.removeLayer(routePolylineRef.current);
+                routePolylineRef.current = null;
+            }
+
             // Add new responder marker if selected
             if (selectedResponder) {
                 const responderLat = selectedResponder.current_latitude ?? selectedResponder.base_latitude;
@@ -183,6 +191,23 @@ export default function DispatchMap({ incident, selectedResponder }: DispatchMap
                     `);
 
                     responderMarkerRef.current = responderMarker;
+
+                    // Draw route line if coordinates available
+                    if (selectedResponder.route_coordinates && selectedResponder.route_coordinates.length > 0) {
+                        const routePolyline = L.polyline(selectedResponder.route_coordinates, {
+                            color: '#3b82f6', // Blue color
+                            weight: 4,
+                            opacity: 0.7,
+                            dashArray: '10, 10', // Dashed line
+                        }).addTo(mapRef.current);
+
+                        routePolylineRef.current = routePolyline;
+
+                        console.log('[DISPATCH MAP] Route line drawn', {
+                            responder_id: selectedResponder.id,
+                            point_count: selectedResponder.route_coordinates.length,
+                        });
+                    }
 
                     // Fit bounds to show both markers
                     const bounds = L.latLngBounds([

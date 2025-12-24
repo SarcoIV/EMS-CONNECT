@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
+import ResponderMonitoring from './LiveMap/ResponderMonitoring';
 import axios from 'axios';
 
 // Import Leaflet CSS in your app.css or here
@@ -146,6 +147,7 @@ export default function LiveMap({
     const [activeResponders, setActiveResponders] = useState<Responder[]>(initialResponders);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
     const [selectedDispatch, setSelectedDispatch] = useState<Dispatch | null>(null);
+    const [monitoredDispatch, setMonitoredDispatch] = useState<Dispatch | null>(null);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterType, setFilterType] = useState<string>('all');
     const [showOnlyActive, setShowOnlyActive] = useState(false);
@@ -155,6 +157,7 @@ export default function LiveMap({
     const markersRef = useRef<any[]>([]);
     const responderMarkersRef = useRef<any[]>([]);
     const routeLinesRef = useRef<any[]>([]);
+    const breadcrumbPolylineRef = useRef<any>(null);
 
     // Filter incidents
     const filteredIncidents = incidents.filter(incident => {
@@ -387,7 +390,10 @@ export default function LiveMap({
             `;
 
             marker.bindPopup(popupContent);
-            marker.on('click', () => setSelectedDispatch(dispatch));
+            marker.on('click', () => {
+                setSelectedDispatch(dispatch);
+                setMonitoredDispatch(dispatch);
+            });
 
             responderMarkersRef.current.push(marker);
 
@@ -476,6 +482,62 @@ export default function LiveMap({
             clearInterval(interval);
         };
     }, [fetchMapData]);
+
+    // Draw GPS breadcrumb trail for monitored dispatch
+    useEffect(() => {
+        const drawBreadcrumbTrail = async () => {
+            if (!mapRef.current || !monitoredDispatch) {
+                // Clear existing breadcrumb trail
+                if (breadcrumbPolylineRef.current && mapRef.current) {
+                    mapRef.current.removeLayer(breadcrumbPolylineRef.current);
+                    breadcrumbPolylineRef.current = null;
+                }
+                return;
+            }
+
+            const L = (await import('leaflet')).default;
+
+            // Fetch route history
+            try {
+                const response = await axios.get(`/admin/dispatches/${monitoredDispatch.id}/route-history`);
+                const points = response.data.route_points;
+
+                if (points.length > 0) {
+                    // Clear existing trail
+                    if (breadcrumbPolylineRef.current) {
+                        mapRef.current.removeLayer(breadcrumbPolylineRef.current);
+                    }
+
+                    // Draw breadcrumb trail
+                    const coordinates = points.map((p: any) => [p.latitude, p.longitude]);
+                    const breadcrumbLine = L.polyline(coordinates, {
+                        color: '#10b981', // Green color
+                        weight: 3,
+                        opacity: 0.6,
+                        dashArray: '5, 10',
+                    }).addTo(mapRef.current);
+
+                    breadcrumbPolylineRef.current = breadcrumbLine;
+
+                    console.log('[LIVEMAP] Breadcrumb trail drawn', {
+                        dispatch_id: monitoredDispatch.id,
+                        point_count: points.length,
+                    });
+                }
+            } catch (err) {
+                console.error('[LIVEMAP] Failed to fetch breadcrumb trail:', err);
+            }
+        };
+
+        drawBreadcrumbTrail();
+
+        // Poll for updates every 5 seconds while monitoring
+        const interval = monitoredDispatch ? setInterval(drawBreadcrumbTrail, 5000) : null;
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [monitoredDispatch]);
 
     // Focus on incident
     const handleFocusIncident = (incident: Incident) => {
@@ -796,6 +858,14 @@ export default function LiveMap({
                         </div>
                     )}
                 </main>
+
+                {/* Responder Live Monitoring Panel */}
+                {monitoredDispatch && (
+                    <ResponderMonitoring
+                        dispatch={monitoredDispatch}
+                        onClose={() => setMonitoredDispatch(null)}
+                    />
+                )}
             </div>
         </div>
     );

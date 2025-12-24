@@ -112,6 +112,9 @@ class DistanceCalculationService
         } catch (\Exception $e) {
             Log::warning('[DISTANCE] OpenRouteService API failed, falling back to Haversine', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'origin' => [$originLat, $originLon],
                 'destination' => [$destLat, $destLon],
             ]);
@@ -164,6 +167,7 @@ class DistanceCalculationService
             $responder->distance_text = $distanceData['distance_text'];
             $responder->duration_seconds = $distanceData['duration_seconds'];
             $responder->duration_text = $distanceData['duration_text'];
+            $responder->route_coordinates = $distanceData['route_coordinates'] ?? null;
             $responder->distance_method = $distanceData['method'];
 
             return $responder;
@@ -221,6 +225,11 @@ class DistanceCalculationService
     ): array {
         $url = "{$this->baseUrl}/directions/driving-car";
 
+        Log::debug('[DISTANCE] Calling OpenRouteService API', [
+            'origin' => [$originLat, $originLon],
+            'destination' => [$destLat, $destLon],
+        ]);
+
         $response = Http::withHeaders([
             'Authorization' => $this->apiKey,
             'Content-Type' => 'application/json',
@@ -237,6 +246,11 @@ class DistanceCalculationService
 
         $data = $response->json();
 
+        Log::debug('[DISTANCE] OpenRouteService response received', [
+            'status' => $response->status(),
+            'has_routes' => isset($data['routes']) && count($data['routes']) > 0,
+        ]);
+
         // Extract distance and duration from response
         $route = $data['routes'][0] ?? null;
         if (!$route) {
@@ -246,11 +260,23 @@ class DistanceCalculationService
         $distanceMeters = $route['summary']['distance'] ?? 0;
         $durationSeconds = $route['summary']['duration'] ?? 0;
 
+        // Extract route geometry for visualization
+        $geometry = $route['geometry']['coordinates'] ?? null;
+
+        // Convert from [lon, lat] to [lat, lon] for Leaflet compatibility
+        $routeCoordinates = null;
+        if ($geometry) {
+            $routeCoordinates = array_map(function ($coord) {
+                return [$coord[1], $coord[0]]; // Swap to [lat, lon]
+            }, $geometry);
+        }
+
         Log::info('[DISTANCE] OpenRouteService API call successful', [
             'origin' => [$originLat, $originLon],
             'destination' => [$destLat, $destLon],
             'distance_meters' => $distanceMeters,
             'duration_seconds' => $durationSeconds,
+            'route_points' => $routeCoordinates ? count($routeCoordinates) : 0,
         ]);
 
         return [
@@ -258,6 +284,7 @@ class DistanceCalculationService
             'duration_seconds' => round($durationSeconds, 2),
             'distance_text' => $this->formatDistance($distanceMeters),
             'duration_text' => $this->formatDuration($durationSeconds),
+            'route_coordinates' => $routeCoordinates,
             'method' => 'openrouteservice',
         ];
     }

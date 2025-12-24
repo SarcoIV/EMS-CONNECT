@@ -77,6 +77,7 @@ class User extends Authenticatable
             'current_longitude' => 'decimal:8',
             'location_updated_at' => 'datetime',
             'is_on_duty' => 'boolean',
+            'responder_status' => 'string',
             'duty_started_at' => 'datetime',
             'duty_ended_at' => 'datetime',
         ];

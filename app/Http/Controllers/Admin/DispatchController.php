@@ -147,6 +147,7 @@ class DispatchController extends Controller
                     'distance_text' => $responder->distance_text,
                     'duration_seconds' => $responder->duration_seconds,
                     'duration_text' => $responder->duration_text,
+                    'route_coordinates' => $responder->route_coordinates ?? null,
                     'distance_method' => $responder->distance_method ?? null,
                 ];
             })->values();
