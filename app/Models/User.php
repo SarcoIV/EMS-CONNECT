@@ -46,6 +46,7 @@ class User extends Authenticatable
         'is_on_duty',
         'duty_started_at',
         'duty_ended_at',
+        'last_active_at',
     ];
 
     /**
@@ -80,6 +81,7 @@ class User extends Authenticatable
             'responder_status' => 'string',
             'duty_started_at' => 'datetime',
             'duty_ended_at' => 'datetime',
+            'last_active_at' => 'datetime',
         ];
     }
 

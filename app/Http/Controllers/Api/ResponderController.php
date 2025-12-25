@@ -65,6 +65,10 @@ class ResponderController extends Controller
             $user->current_latitude = $validated['latitude'];
             $user->current_longitude = $validated['longitude'];
             $user->location_updated_at = now();
+
+            // Update last active timestamp (location updates indicate responder is active)
+            $user->last_active_at = now();
+
             $user->save();
 
             // Store location history if responder has active dispatch
@@ -96,6 +100,7 @@ class ResponderController extends Controller
                     'latitude' => (float) $user->current_latitude,
                     'longitude' => (float) $user->current_longitude,
                     'updated_at' => $user->location_updated_at->toIso8601String(),
+                    'last_active_at' => $user->last_active_at?->toIso8601String(),
                 ],
             ]);
         } catch (\Exception $e) {
@@ -178,6 +183,9 @@ class ResponderController extends Controller
                 $user->duty_ended_at = now();
             }
 
+            // Update last active timestamp (for automatic offline detection)
+            $user->last_active_at = now();
+
             $user->save();
 
             Log::info('[RESPONDER] 🔄 Status updated', [
@@ -196,6 +204,7 @@ class ResponderController extends Controller
                     'responder_status' => $user->responder_status,
                     'duty_started_at' => $user->duty_started_at?->toIso8601String(),
                     'duty_ended_at' => $user->duty_ended_at?->toIso8601String(),
+                    'last_active_at' => $user->last_active_at?->toIso8601String(),
                 ],
             ]);
         } catch (\Exception $e) {
