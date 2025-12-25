@@ -68,9 +68,13 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
             try {
                 const response = await axios.get(`/admin/dispatches/${dispatch.id}/route-history`);
                 setRouteHistory(response.data.route_points || []);
-            } catch (err) {
-                console.error('Failed to fetch route history:', err);
-                setError('Failed to load route history');
+                console.log('[TRACKING MODAL] Route history loaded:', response.data.route_points?.length || 0, 'points');
+            } catch (err: any) {
+                console.error('[TRACKING MODAL] Failed to fetch route history:', err);
+                // Don't set error - just show map without route history
+                // This is normal for newly assigned dispatches
+                setRouteHistory([]);
+                console.log('[TRACKING MODAL] No route history available yet - showing current location only');
             } finally {
                 setIsLoading(false);
             }
@@ -361,7 +365,13 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                             <p className="text-red-600">{error}</p>
                         </div>
                     )}
-                    {!isLoading && !error && (
+                    {!isLoading && !error && !dispatch.responder?.current_latitude && (
+                        <div className="flex flex-col items-center justify-center h-full bg-amber-50 rounded-lg p-6 text-center">
+                            <p className="text-amber-700 font-medium mb-2">Waiting for responder location...</p>
+                            <p className="text-sm text-amber-600">The responder hasn't shared their location yet. The map will appear once they start moving.</p>
+                        </div>
+                    )}
+                    {!isLoading && !error && dispatch.responder?.current_latitude && (
                         <div ref={mapContainerRef} className="flex-1 rounded-lg overflow-hidden border border-slate-200" />
                     )}
                 </div>
