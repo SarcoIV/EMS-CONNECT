@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
 import axios from 'axios';
 import echo from '@/echo';
 
@@ -52,10 +53,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
         longitude: dispatch.responder?.current_longitude,
     });
 
-    const mapRef = useRef<any>(null);
-    const mapContainerRef = useRef<HTMLDivElement>(null);
-    const responderMarkerRef = useRef<any>(null);
-    const routePolylineRef = useRef<any>(null);
+    const [map, setMap] = useState<google.maps.Map | null>(null);
 
     // Fetch route history when modal opens
     useEffect(() => {
@@ -83,174 +81,23 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
         fetchRouteHistory();
     }, [isOpen, dispatch.id]);
 
-    // Initialize Leaflet map
+    // Fit bounds when map loads or data changes
     useEffect(() => {
-        if (!isOpen || !mapContainerRef.current || isLoading) return;
+        if (!map || !currentResponderLocation.latitude) return;
 
-        const initMap = async () => {
-            const L = (await import('leaflet')).default;
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({ lat: incident.latitude, lng: incident.longitude });
+        bounds.extend({
+            lat: currentResponderLocation.latitude,
+            lng: currentResponderLocation.longitude
+        });
 
-            // Fix Leaflet default icon issue
-            delete (L.Icon.Default.prototype as any)._getIconUrl;
-            L.Icon.Default.mergeOptions({
-                iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-                iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-            });
+        routeHistory.forEach(point => {
+            bounds.extend({ lat: point.latitude, lng: point.longitude });
+        });
 
-            if (mapRef.current) {
-                mapRef.current.remove();
-            }
-
-            // Initialize map centered on incident
-            mapRef.current = L.map(mapContainerRef.current).setView(
-                [incident.latitude, incident.longitude],
-                14
-            );
-
-            // Add OpenStreetMap tiles
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                maxZoom: 19,
-            }).addTo(mapRef.current);
-
-            // Draw incident marker (red)
-            const incidentIconHtml = `
-                <div style="
-                    background-color: #ef4444;
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    border: 3px solid white;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                    font-size: 18px;
-                ">
-                    🚨
-                </div>
-            `;
-
-            const incidentIcon = L.divIcon({
-                html: incidentIconHtml,
-                className: 'custom-marker',
-                iconSize: [36, 36],
-                iconAnchor: [18, 18],
-            });
-
-            L.marker([incident.latitude, incident.longitude], { icon: incidentIcon })
-                .addTo(mapRef.current)
-                .bindPopup(`
-                    <div style="min-width: 150px;">
-                        <strong>Incident Location</strong><br/>
-                        ${incident.address}
-                    </div>
-                `);
-
-            // Draw route history polyline (if available)
-            if (routeHistory.length > 0) {
-                const routeCoords: [number, number][] = routeHistory.map(point => [
-                    point.latitude,
-                    point.longitude
-                ]);
-
-                routePolylineRef.current = L.polyline(routeCoords, {
-                    color: '#3b82f6',
-                    weight: 4,
-                    opacity: 0.7,
-                    dashArray: '10, 5',
-                }).addTo(mapRef.current);
-
-                // Add start marker (gray)
-                const startPoint = routeHistory[0];
-                const startIconHtml = `
-                    <div style="
-                        background-color: #6b7280;
-                        width: 12px;
-                        height: 12px;
-                        border-radius: 50%;
-                        border: 2px solid white;
-                        box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-                    "></div>
-                `;
-
-                const startIcon = L.divIcon({
-                    html: startIconHtml,
-                    className: 'custom-marker',
-                    iconSize: [12, 12],
-                    iconAnchor: [6, 6],
-                });
-
-                L.marker([startPoint.latitude, startPoint.longitude], { icon: startIcon })
-                    .addTo(mapRef.current)
-                    .bindPopup('Route Start');
-            }
-
-            // Draw responder marker (blue ambulance)
-            if (currentResponderLocation.latitude && currentResponderLocation.longitude) {
-                const responderIconHtml = `
-                    <div style="
-                        background-color: #3b82f6;
-                        width: 40px;
-                        height: 40px;
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        border: 3px solid white;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                        font-size: 20px;
-                        animation: pulse 2s infinite;
-                    ">
-                        🚑
-                    </div>
-                `;
-
-                const responderIcon = L.divIcon({
-                    html: responderIconHtml,
-                    className: 'custom-marker',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20],
-                });
-
-                responderMarkerRef.current = L.marker(
-                    [currentResponderLocation.latitude, currentResponderLocation.longitude],
-                    { icon: responderIcon }
-                ).addTo(mapRef.current).bindPopup(`
-                    <div style="min-width: 150px;">
-                        <strong>${dispatch.responder?.name}</strong><br/>
-                        Status: ${dispatch.status.replace('_', ' ')}<br/>
-                        Distance: ${dispatch.distance_text}<br/>
-                        ETA: ${dispatch.duration_text}
-                    </div>
-                `);
-
-                // Fit bounds to show both markers
-                const bounds = L.latLngBounds([
-                    [incident.latitude, incident.longitude],
-                    [currentResponderLocation.latitude, currentResponderLocation.longitude]
-                ]);
-
-                if (routeHistory.length > 0) {
-                    routeHistory.forEach(point => {
-                        bounds.extend([point.latitude, point.longitude]);
-                    });
-                }
-
-                mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-            }
-        };
-
-        initMap();
-
-        return () => {
-            if (mapRef.current) {
-                mapRef.current.remove();
-                mapRef.current = null;
-            }
-        };
-    }, [isOpen, isLoading, routeHistory, currentResponderLocation, dispatch, incident]);
+        map.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
+    }, [map, currentResponderLocation, routeHistory, incident]);
 
     // Subscribe to real-time location updates
     useEffect(() => {
@@ -258,7 +105,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
 
         const channel = echo.channel('admin-dashboard');
 
-        channel.listen('ResponderLocationUpdated', async (event: any) => {
+        channel.listen('ResponderLocationUpdated', (event: any) => {
             if (event.responder_id !== dispatch.responder_id) return;
 
             console.log('[TRACKING MODAL] Responder location updated:', event);
@@ -269,38 +116,24 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                 longitude: event.longitude,
             });
 
-            // Update responder marker on map
-            if (responderMarkerRef.current && mapRef.current) {
-                const L = (await import('leaflet')).default;
-                responderMarkerRef.current.setLatLng([event.latitude, event.longitude]);
-
-                // Add new point to route polyline
-                if (routePolylineRef.current) {
-                    const currentLatLngs = routePolylineRef.current.getLatLngs();
-                    currentLatLngs.push(L.latLng(event.latitude, event.longitude));
-                    routePolylineRef.current.setLatLngs(currentLatLngs);
-                }
-
-                // Pan map to keep responder in view
-                mapRef.current.panTo([event.latitude, event.longitude], {
-                    animate: true,
-                    duration: 0.5,
-                });
-            }
-
-            // Add to route history state
+            // Add to route history state (polyline will auto-update via state)
             setRouteHistory(prev => [...prev, {
                 latitude: event.latitude,
                 longitude: event.longitude,
                 accuracy: null,
                 timestamp: event.updated_at,
             }]);
+
+            // Pan map to keep responder in view
+            if (map) {
+                map.panTo({ lat: event.latitude, lng: event.longitude });
+            }
         });
 
         return () => {
             channel.stopListening('ResponderLocationUpdated');
         };
-    }, [isOpen, dispatch.responder_id]);
+    }, [isOpen, dispatch.responder_id, map]);
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -310,26 +143,6 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                         Tracking: {dispatch.responder?.name || 'Responder'} → Incident #{incident.id}
                     </DialogTitle>
                 </DialogHeader>
-
-                {/* Add Leaflet CSS */}
-                <link
-                    rel="stylesheet"
-                    href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
-                    integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
-                    crossOrigin=""
-                />
-
-                {/* Custom animation */}
-                <style>{`
-                    @keyframes pulse {
-                        0%, 100% { transform: scale(1); }
-                        50% { transform: scale(1.1); }
-                    }
-                    .custom-marker {
-                        background: transparent !important;
-                        border: none !important;
-                    }
-                `}</style>
 
                 <div className="flex flex-col gap-4 h-full">
                     {/* Info Bar */}
@@ -360,19 +173,108 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                             <p className="text-slate-500">Loading map...</p>
                         </div>
                     )}
-                    {error && (
-                        <div className="flex items-center justify-center h-full bg-red-50 rounded-lg">
-                            <p className="text-red-600">{error}</p>
-                        </div>
-                    )}
-                    {!isLoading && !error && !dispatch.responder?.current_latitude && (
+
+                    {!isLoading && !dispatch.responder?.current_latitude && (
                         <div className="flex flex-col items-center justify-center h-full bg-amber-50 rounded-lg p-6 text-center">
                             <p className="text-amber-700 font-medium mb-2">Waiting for responder location...</p>
-                            <p className="text-sm text-amber-600">The responder hasn't shared their location yet. The map will appear once they start moving.</p>
+                            <p className="text-sm text-amber-600">
+                                The responder hasn't shared their location yet. The map will appear once they start moving.
+                            </p>
                         </div>
                     )}
-                    {!isLoading && !error && dispatch.responder?.current_latitude && (
-                        <div ref={mapContainerRef} className="flex-1 rounded-lg overflow-hidden border border-slate-200" />
+
+                    {!isLoading && dispatch.responder?.current_latitude && (
+                        <div className="flex-1 rounded-lg overflow-hidden border border-slate-200">
+                            <LoadScript googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}>
+                                <GoogleMap
+                                    mapContainerStyle={{ width: '100%', height: '100%' }}
+                                    zoom={14}
+                                    center={{ lat: incident.latitude, lng: incident.longitude }}
+                                    onLoad={(map) => setMap(map)}
+                                    onUnmount={() => setMap(null)}
+                                    options={{
+                                        mapTypeControl: true,
+                                        streetViewControl: true,
+                                        fullscreenControl: true,
+                                    }}
+                                >
+                                    {/* Incident Marker (Red) */}
+                                    <Marker
+                                        position={{ lat: incident.latitude, lng: incident.longitude }}
+                                        icon={{
+                                            path: google.maps.SymbolPath.CIRCLE,
+                                            fillColor: '#ef4444',
+                                            fillOpacity: 1,
+                                            strokeColor: '#ffffff',
+                                            strokeWeight: 3,
+                                            scale: 12,
+                                        }}
+                                        label={{
+                                            text: '🚨',
+                                            fontSize: '18px',
+                                        }}
+                                        title={`Incident: ${incident.address}`}
+                                    />
+
+                                    {/* Route History Polyline */}
+                                    {routeHistory.length > 0 && (
+                                        <>
+                                            <Polyline
+                                                path={routeHistory.map(p => ({
+                                                    lat: p.latitude,
+                                                    lng: p.longitude
+                                                }))}
+                                                options={{
+                                                    strokeColor: '#3b82f6',
+                                                    strokeOpacity: 0.7,
+                                                    strokeWeight: 4,
+                                                }}
+                                            />
+
+                                            {/* Start Point Marker (Gray) */}
+                                            <Marker
+                                                position={{
+                                                    lat: routeHistory[0].latitude,
+                                                    lng: routeHistory[0].longitude
+                                                }}
+                                                icon={{
+                                                    path: google.maps.SymbolPath.CIRCLE,
+                                                    fillColor: '#6b7280',
+                                                    fillOpacity: 1,
+                                                    strokeColor: '#ffffff',
+                                                    strokeWeight: 2,
+                                                    scale: 4,
+                                                }}
+                                                title="Route Start"
+                                            />
+                                        </>
+                                    )}
+
+                                    {/* Responder Marker (Blue) */}
+                                    {currentResponderLocation.latitude && currentResponderLocation.longitude && (
+                                        <Marker
+                                            position={{
+                                                lat: currentResponderLocation.latitude,
+                                                lng: currentResponderLocation.longitude
+                                            }}
+                                            icon={{
+                                                path: google.maps.SymbolPath.CIRCLE,
+                                                fillColor: '#3b82f6',
+                                                fillOpacity: 1,
+                                                strokeColor: '#ffffff',
+                                                strokeWeight: 3,
+                                                scale: 14,
+                                            }}
+                                            label={{
+                                                text: '🚑',
+                                                fontSize: '20px',
+                                            }}
+                                            title={dispatch.responder?.name || 'Responder'}
+                                        />
+                                    )}
+                                </GoogleMap>
+                            </LoadScript>
+                        </div>
                     )}
                 </div>
             </DialogContent>
