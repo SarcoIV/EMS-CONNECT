@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Dispatch;
+use App\Models\PreArrivalForm;
 use App\Services\DispatchService;
 use App\Services\DistanceCalculationService;
+use App\Events\ResponderLocationUpdated;
+use App\Events\PreArrivalFormSubmitted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -93,6 +96,9 @@ class ResponderController extends Controller
                 'request_ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
+
+            // Broadcast location update to admin dashboard (real-time map)
+            broadcast(new ResponderLocationUpdated($user))->toOthers();
 
             return response()->json([
                 'message' => 'Location updated successfully',
@@ -411,6 +417,96 @@ class ResponderController extends Controller
 
             return response()->json([
                 'message' => 'Failed to update dispatch status',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 422);
+        }
+    }
+
+    /**
+     * Store pre-arrival form for a dispatch.
+     *
+     * POST /api/responder/dispatches/{dispatchId}/pre-arrival
+     */
+    public function storePreArrival(Request $request, $dispatchId)
+    {
+        try {
+            $user = $request->user();
+
+            // Validate user is a responder
+            if (!$user || !$user->isResponder()) {
+                return response()->json([
+                    'message' => 'Unauthorized. Only responders can submit pre-arrival forms.',
+                ], 403);
+            }
+
+            // Validate request
+            $validated = $request->validate([
+                'caller_name' => ['nullable', 'string', 'max:255'],
+                'patient_name' => ['required', 'string', 'max:255'],
+                'sex' => ['required', 'in:Male,Female,Other'],
+                'age' => ['required', 'integer', 'min:0', 'max:150'],
+                'incident_type' => ['required', 'string', 'max:100'],
+                'estimated_arrival' => ['nullable', 'date'],
+            ]);
+
+            // Verify dispatch exists and belongs to this responder
+            $dispatch = Dispatch::where('id', $dispatchId)
+                ->where('responder_id', $user->id)
+                ->firstOrFail();
+
+            // Create or update pre-arrival form
+            $preArrival = PreArrivalForm::updateOrCreate(
+                ['dispatch_id' => $dispatchId],
+                [
+                    'responder_id' => $user->id,
+                    'caller_name' => $validated['caller_name'] ?? null,
+                    'patient_name' => $validated['patient_name'],
+                    'sex' => $validated['sex'],
+                    'age' => $validated['age'],
+                    'incident_type' => $validated['incident_type'],
+                    'estimated_arrival' => $validated['estimated_arrival'] ?? null,
+                    'submitted_at' => now(),
+                ]
+            );
+
+            Log::info('[RESPONDER] 📋 Pre-arrival form submitted', [
+                'dispatch_id' => $dispatchId,
+                'responder_id' => $user->id,
+                'responder_name' => $user->name,
+                'patient_name' => $validated['patient_name'],
+                'incident_type' => $validated['incident_type'],
+            ]);
+
+            // Broadcast to admin dashboard
+            broadcast(new PreArrivalFormSubmitted($dispatch->load('responder'), $preArrival))->toOthers();
+
+            return response()->json([
+                'message' => 'Pre-arrival information saved successfully',
+                'pre_arrival' => [
+                    'id' => $preArrival->id,
+                    'dispatch_id' => $preArrival->dispatch_id,
+                    'caller_name' => $preArrival->caller_name,
+                    'patient_name' => $preArrival->patient_name,
+                    'sex' => $preArrival->sex,
+                    'age' => $preArrival->age,
+                    'incident_type' => $preArrival->incident_type,
+                    'estimated_arrival' => $preArrival->estimated_arrival?->toIso8601String(),
+                    'submitted_at' => $preArrival->submitted_at?->toIso8601String(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[RESPONDER] ❌ Failed to submit pre-arrival form', [
+                'dispatch_id' => $dispatchId,
+                'responder_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'request_data' => $request->all(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to submit pre-arrival form',
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 422);
         }

@@ -104,6 +104,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Update dispatch status (accept, en route, arrived, completed)
         Route::post('/dispatches/{id}/status', [ResponderController::class, 'updateDispatchStatus'])
             ->where('id', '[0-9]+');
+
+        // Submit pre-arrival form for a dispatch
+        Route::post('/dispatches/{dispatchId}/pre-arrival', [ResponderController::class, 'storePreArrival'])
+            ->where('dispatchId', '[0-9]+');
     });
 
     // -------------------------------------------------------------------------
