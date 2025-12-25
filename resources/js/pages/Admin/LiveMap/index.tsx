@@ -3,6 +3,7 @@ import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
 import axios from 'axios';
+import echo from '@/echo';
 
 interface User {
     id: number;
@@ -41,6 +42,27 @@ interface ActiveCall {
         longitude: number;
         address: string;
     };
+}
+
+interface Responder {
+    id: number;
+    name: string;
+    latitude: number;
+    longitude: number;
+    status: string;
+    activeDispatch?: {
+        id: number;
+        incident_id: number;
+        status: string;
+    };
+}
+
+interface ResponderLocationUpdate {
+    responder_id: number;
+    latitude: number;
+    longitude: number;
+    status: string;
+    timestamp: string;
 }
 
 interface LiveMapProps {
@@ -84,9 +106,11 @@ export default function LiveMap({
     const [filterType, setFilterType] = useState<string>('all');
     const [showOnlyActive, setShowOnlyActive] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+    const [responders, setResponders] = useState<Map<number, Responder>>(new Map());
     const mapRef = useRef<any>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const markersRef = useRef<any[]>([]);
+    const responderMarkersRef = useRef<Map<number, any>>(new Map());
 
     // Filter incidents
     const filteredIncidents = incidents.filter(incident => {
@@ -238,6 +262,65 @@ export default function LiveMap({
         });
     };
 
+    // Update responder markers on map
+    const updateResponderMarker = async (responder: Responder) => {
+        if (!mapRef.current) return;
+
+        const L = (await import('leaflet')).default;
+
+        // Remove existing marker if it exists
+        const existingMarker = responderMarkersRef.current.get(responder.id);
+        if (existingMarker) {
+            existingMarker.remove();
+        }
+
+        // Create responder icon
+        const responderIconHtml = `
+            <div style="
+                background-color: ${responder.status === 'en_route' ? '#3b82f6' : '#10b981'};
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 3px solid white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                font-size: 14px;
+            ">
+                🚑
+            </div>
+        `;
+
+        const icon = L.divIcon({
+            html: responderIconHtml,
+            className: 'custom-marker',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+        });
+
+        const marker = L.marker([responder.latitude, responder.longitude], { icon })
+            .addTo(mapRef.current);
+
+        // Add popup
+        const popupContent = `
+            <div style="min-width: 150px;">
+                <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
+                    🚑 ${responder.name}
+                </div>
+                <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${responder.status === 'en_route' ? '#3b82f6' : '#10b981'}20; color: ${responder.status === 'en_route' ? '#3b82f6' : '#10b981'};">
+                    ${responder.status.toUpperCase()}
+                </div>
+                ${responder.activeDispatch ? `<div style="margin-top: 8px; font-size: 12px;">Assigned to Incident #${responder.activeDispatch.incident_id}</div>` : ''}
+            </div>
+        `;
+
+        marker.bindPopup(popupContent);
+
+        // Store marker reference
+        responderMarkersRef.current.set(responder.id, marker);
+    };
+
     // Set up polling
     useEffect(() => {
         console.log('[LIVEMAP] 🚀 Starting real-time map updates');
@@ -248,6 +331,55 @@ export default function LiveMap({
             clearInterval(interval);
         };
     }, [fetchMapData]);
+
+    // Set up Echo listeners for real-time updates
+    useEffect(() => {
+        console.log('[LIVEMAP] 📡 Setting up real-time broadcasting listeners');
+
+        // Listen to admin-dashboard channel
+        const channel = echo.channel('admin-dashboard');
+
+        // Listen for responder location updates
+        channel.listen('ResponderLocationUpdated', (event: ResponderLocationUpdate) => {
+            console.log('[LIVEMAP] 📍 Responder location updated:', event);
+
+            setResponders(prev => {
+                const updated = new Map(prev);
+                const existing = updated.get(event.responder_id);
+
+                const responder: Responder = {
+                    id: event.responder_id,
+                    name: existing?.name || `Responder #${event.responder_id}`,
+                    latitude: event.latitude,
+                    longitude: event.longitude,
+                    status: event.status,
+                    activeDispatch: existing?.activeDispatch,
+                };
+
+                updated.set(event.responder_id, responder);
+
+                // Update marker on map
+                updateResponderMarker(responder);
+
+                return updated;
+            });
+        });
+
+        // Listen for pre-arrival form submissions
+        channel.listen('PreArrivalFormSubmitted', (event: any) => {
+            console.log('[LIVEMAP] 📋 Pre-arrival form submitted:', event);
+
+            // Show notification or update UI as needed
+            // You can add a toast notification here
+        });
+
+        return () => {
+            console.log('[LIVEMAP] 📡 Cleaning up broadcasting listeners');
+            channel.stopListening('ResponderLocationUpdated');
+            channel.stopListening('PreArrivalFormSubmitted');
+            echo.leaveChannel('admin-dashboard');
+        };
+    }, []);
 
     // Focus on incident
     const handleFocusIncident = (incident: Incident) => {

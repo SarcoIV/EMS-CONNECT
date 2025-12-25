@@ -6,6 +6,9 @@ import { createRoot } from 'react-dom/client';
 // Removed initializeTheme since we want to force light mode
 // import { initializeTheme } from './hooks/use-appearance';
 
+// Initialize Laravel Echo for real-time broadcasting
+import './echo';
+
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 // Force light mode by ensuring the 'dark' class is not present
