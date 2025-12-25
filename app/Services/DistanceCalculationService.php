@@ -256,6 +256,7 @@ class DistanceCalculationService
                 [$originLon, $originLat], // Note: OpenRouteService uses [lon, lat] format
                 [$destLon, $destLat],
             ],
+            'format' => 'geojson', // Request GeoJSON format for coordinates
         ]);
 
         if (!$response->successful()) {
@@ -279,22 +280,23 @@ class DistanceCalculationService
         $durationSeconds = $route['summary']['duration'] ?? 0;
 
         // Extract route geometry for visualization
-        $geometry = $route['geometry']['coordinates'] ?? null;
+        // OpenRouteService returns GeoJSON coordinates as array of [lon, lat]
+        $geometry = $route['geometry']['coordinates'] ?? [];
 
-        // Convert from [lon, lat] to [lat, lon] for Leaflet compatibility
-        $routeCoordinates = null;
-        if ($geometry) {
-            $routeCoordinates = array_map(function ($coord) {
-                return [$coord[1], $coord[0]]; // Swap to [lat, lon]
-            }, $geometry);
-        }
+        // Convert from GeoJSON [lon, lat] to mobile app format [{latitude, longitude}]
+        $routeCoordinates = array_map(function ($coord) {
+            return [
+                'latitude' => (float) $coord[1],  // GeoJSON has lon first, lat second
+                'longitude' => (float) $coord[0], // Swap to lat/lon format
+            ];
+        }, $geometry);
 
         Log::info('[DISTANCE] OpenRouteService API call successful', [
             'origin' => [$originLat, $originLon],
             'destination' => [$destLat, $destLon],
             'distance_meters' => $distanceMeters,
             'duration_seconds' => $durationSeconds,
-            'route_points' => $routeCoordinates ? count($routeCoordinates) : 0,
+            'route_points' => count($routeCoordinates),
         ]);
 
         return [
@@ -302,7 +304,8 @@ class DistanceCalculationService
             'duration_seconds' => round($durationSeconds, 2),
             'distance_text' => $this->formatDistance($distanceMeters),
             'duration_text' => $this->formatDuration($durationSeconds),
-            'route_coordinates' => $routeCoordinates,
+            'route_coordinates' => $routeCoordinates, // Full array of lat/lon points
+            'encoded_polyline' => null, // OpenRouteService doesn't provide this in GeoJSON mode
             'method' => 'openrouteservice',
         ];
     }
@@ -327,11 +330,19 @@ class DistanceCalculationService
         $averageSpeedMetersPerSecond = (40 * 1000) / 3600; // 40 km/h = 11.11 m/s
         $durationSeconds = $distanceMeters / $averageSpeedMetersPerSecond;
 
+        // Haversine is straight-line, so only return start and end points
+        $routeCoordinates = [
+            ['latitude' => $originLat, 'longitude' => $originLon],
+            ['latitude' => $destLat, 'longitude' => $destLon],
+        ];
+
         return [
             'distance_meters' => round($distanceMeters, 2),
             'duration_seconds' => round($durationSeconds, 2),
             'distance_text' => $this->formatDistance($distanceMeters) . ' (est.)',
             'duration_text' => $this->formatDuration($durationSeconds) . ' (est.)',
+            'route_coordinates' => $routeCoordinates, // Only 2 points for straight line
+            'encoded_polyline' => null,
             'method' => 'haversine',
         ];
     }

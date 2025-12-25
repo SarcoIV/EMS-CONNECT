@@ -252,6 +252,14 @@ class ResponderController extends Controller
                             (float) $dispatch->incident->latitude,
                             (float) $dispatch->incident->longitude
                         );
+
+                        // Log route details for debugging
+                        Log::info('[RESPONDER] 🗺️ Route calculated for dispatch', [
+                            'dispatch_id' => $dispatch->id,
+                            'coordinates_count' => count($routeData['route_coordinates'] ?? []),
+                            'distance' => $routeData['distance_text'] ?? 'N/A',
+                            'method' => $routeData['method'] ?? 'unknown',
+                        ]);
                     } catch (\Exception $e) {
                         Log::warning('[RESPONDER] Failed to calculate route for dispatch', [
                             'dispatch_id' => $dispatch->id,
