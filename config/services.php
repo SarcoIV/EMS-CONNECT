@@ -74,4 +74,22 @@ return [
         'base_url' => env('OPENROUTESERVICE_BASE_URL', 'https://api.openrouteservice.org/v2'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google Maps API Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for Google Maps Directions API used for calculating routes,
+    | distances, and travel times between incident locations and responder locations.
+    | This is used exclusively on the backend during dispatch operations.
+    |
+    | API Key is NEVER exposed to frontend or mobile applications.
+    |
+    */
+
+    'google_maps' => [
+        'api_key' => env('GOOGLE_MAPS_API_KEY'),
+        'base_url' => env('GOOGLE_MAPS_BASE_URL', 'https://maps.googleapis.com/maps/api'),
+    ],
+
 ];

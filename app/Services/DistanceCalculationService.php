@@ -34,11 +34,13 @@ class DistanceCalculationService
     // API configuration
     private string $apiKey;
     private string $baseUrl;
+    private GoogleMapsService $googleMapsService;
 
     public function __construct()
     {
         $this->apiKey = config('services.openrouteservice.api_key');
         $this->baseUrl = config('services.openrouteservice.base_url');
+        $this->googleMapsService = new GoogleMapsService();
     }
 
     /**
@@ -77,14 +79,14 @@ class DistanceCalculationService
     }
 
     /**
-     * Calculate road distance and travel time using OpenRouteService API.
-     * Falls back to Haversine if API call fails.
+     * Calculate road distance and travel time using routing APIs.
+     * Primary: Google Maps API, Fallback: OpenRouteService, Final: Haversine formula
      *
      * @param float $originLat Origin latitude
      * @param float $originLon Origin longitude
      * @param float $destLat Destination latitude
      * @param float $destLon Destination longitude
-     * @return array ['distance_meters' => float, 'duration_seconds' => float, 'distance_text' => string, 'duration_text' => string, 'method' => string]
+     * @return array ['distance_meters' => float, 'duration_seconds' => float, 'distance_text' => string, 'duration_text' => string, 'route_coordinates' => array, 'encoded_polyline' => string, 'method' => string]
      */
     public function calculateRoadDistance(
         float $originLat,
@@ -101,26 +103,41 @@ class DistanceCalculationService
             return $cachedResult;
         }
 
-        // Try OpenRouteService API
+        // Try Google Maps API first (primary provider)
         try {
-            $result = $this->callOpenRouteServiceAPI($originLat, $originLon, $destLat, $destLon);
+            $result = $this->googleMapsService->getDirections(
+                $originLat,
+                $originLon,
+                $destLat,
+                $destLon
+            );
 
             // Cache the successful result
             Cache::put($cacheKey, $result, self::CACHE_TTL_SECONDS);
 
             return $result;
-        } catch (\Exception $e) {
-            Log::warning('[DISTANCE] OpenRouteService API failed, falling back to Haversine', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'origin' => [$originLat, $originLon],
-                'destination' => [$destLat, $destLon],
+        } catch (\Exception $googleError) {
+            Log::warning('[DISTANCE] Google Maps API failed, trying OpenRouteService fallback', [
+                'error' => $googleError->getMessage(),
             ]);
 
-            // Fallback to Haversine
-            return $this->fallbackToHaversine($originLat, $originLon, $destLat, $destLon);
+            // Fallback to OpenRouteService
+            try {
+                $result = $this->callOpenRouteServiceAPI($originLat, $originLon, $destLat, $destLon);
+
+                // Cache the successful result
+                Cache::put($cacheKey, $result, self::CACHE_TTL_SECONDS);
+
+                return $result;
+            } catch (\Exception $orsError) {
+                Log::warning('[DISTANCE] OpenRouteService also failed, falling back to Haversine', [
+                    'google_error' => $googleError->getMessage(),
+                    'ors_error' => $orsError->getMessage(),
+                ]);
+
+                // Final fallback to Haversine
+                return $this->fallbackToHaversine($originLat, $originLon, $destLat, $destLon);
+            }
         }
     }
 
@@ -168,6 +185,7 @@ class DistanceCalculationService
             $responder->duration_seconds = $distanceData['duration_seconds'];
             $responder->duration_text = $distanceData['duration_text'];
             $responder->route_coordinates = $distanceData['route_coordinates'] ?? null;
+            $responder->encoded_polyline = $distanceData['encoded_polyline'] ?? null;
             $responder->distance_method = $distanceData['method'];
 
             return $responder;

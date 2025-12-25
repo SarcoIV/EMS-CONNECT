@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Dispatch;
 use App\Services\DispatchService;
+use App\Services\DistanceCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -20,10 +21,14 @@ use Illuminate\Support\Facades\Log;
 class ResponderController extends Controller
 {
     private DispatchService $dispatchService;
+    private DistanceCalculationService $distanceService;
 
-    public function __construct(DispatchService $dispatchService)
-    {
+    public function __construct(
+        DispatchService $dispatchService,
+        DistanceCalculationService $distanceService
+    ) {
         $this->dispatchService = $dispatchService;
+        $this->distanceService = $distanceService;
     }
 
     /**
@@ -209,19 +214,53 @@ class ResponderController extends Controller
                 ->get();
 
             // Format dispatches for mobile app
-            $dispatchesData = $dispatches->map(function ($dispatch) {
+            $dispatchesData = $dispatches->map(function ($dispatch) use ($user) {
+                // Calculate current route (if responder has location)
+                $routeData = null;
+
+                if ($user->current_latitude && $user->current_longitude) {
+                    try {
+                        $routeData = $this->distanceService->calculateRoadDistance(
+                            (float) $user->current_latitude,
+                            (float) $user->current_longitude,
+                            (float) $dispatch->incident->latitude,
+                            (float) $dispatch->incident->longitude
+                        );
+                    } catch (\Exception $e) {
+                        Log::warning('[RESPONDER] Failed to calculate route for dispatch', [
+                            'dispatch_id' => $dispatch->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
                 return [
                     'id' => $dispatch->id,
                     'incident_id' => $dispatch->incident_id,
                     'status' => $dispatch->status,
+
+                    // Original distance at assignment time
                     'distance_meters' => $dispatch->distance_meters,
                     'distance_text' => $dispatch->formatted_distance,
                     'estimated_duration_seconds' => $dispatch->estimated_duration_seconds,
                     'duration_text' => $dispatch->formatted_duration,
+
+                    // Current route data (if available)
+                    'route' => $routeData ? [
+                        'distance_meters' => $routeData['distance_meters'],
+                        'duration_seconds' => $routeData['duration_seconds'],
+                        'distance_text' => $routeData['distance_text'],
+                        'duration_text' => $routeData['duration_text'],
+                        'coordinates' => $routeData['route_coordinates'], // Array of {latitude, longitude}
+                        'encoded_polyline' => $routeData['encoded_polyline'] ?? null, // For efficiency
+                        'method' => $routeData['method'], // google_maps, openrouteservice, or haversine
+                    ] : null,
+
                     'assigned_at' => $dispatch->assigned_at->toIso8601String(),
                     'accepted_at' => $dispatch->accepted_at?->toIso8601String(),
                     'en_route_at' => $dispatch->en_route_at?->toIso8601String(),
                     'arrived_at' => $dispatch->arrived_at?->toIso8601String(),
+
                     'incident' => [
                         'id' => $dispatch->incident->id,
                         'type' => $dispatch->incident->type,
@@ -246,6 +285,11 @@ class ResponderController extends Controller
 
             return response()->json([
                 'dispatches' => $dispatchesData,
+                'responder_location' => [
+                    'latitude' => (float) $user->current_latitude,
+                    'longitude' => (float) $user->current_longitude,
+                    'updated_at' => $user->location_updated_at?->toIso8601String(),
+                ],
             ]);
         } catch (\Exception $e) {
             Log::error('[RESPONDER] ❌ Failed to fetch dispatches', [
