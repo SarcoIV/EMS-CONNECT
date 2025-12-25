@@ -125,7 +125,14 @@ class DashboardController extends Controller
      */
     private function getRecentIncidents(int $limit = 10): array
     {
-        $incidents = Incident::with(['user:id,name,email,phone_number'])
+        $incidents = Incident::with([
+            'user:id,name,email,phone_number',
+            'dispatches' => function ($query) {
+                $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+                      ->orderBy('assigned_at', 'desc');
+            },
+            'dispatches.responder:id,name,current_latitude,current_longitude,responder_status,location_updated_at'
+        ])
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
@@ -148,6 +155,28 @@ class DashboardController extends Controller
                     'email' => $incident->user->email,
                     'phone_number' => $incident->user->phone_number,
                 ] : null,
+                'dispatches' => $incident->dispatches->map(function ($dispatch) {
+                    return [
+                        'id' => $dispatch->id,
+                        'responder_id' => $dispatch->responder_id,
+                        'status' => $dispatch->status,
+                        'distance_meters' => $dispatch->distance_meters,
+                        'distance_text' => $dispatch->formatted_distance,
+                        'duration_text' => $dispatch->formatted_duration,
+                        'assigned_at' => $dispatch->assigned_at?->toIso8601String(),
+                        'accepted_at' => $dispatch->accepted_at?->toIso8601String(),
+                        'en_route_at' => $dispatch->en_route_at?->toIso8601String(),
+                        'arrived_at' => $dispatch->arrived_at?->toIso8601String(),
+                        'responder' => $dispatch->responder ? [
+                            'id' => $dispatch->responder->id,
+                            'name' => $dispatch->responder->name,
+                            'current_latitude' => $dispatch->responder->current_latitude ? (float) $dispatch->responder->current_latitude : null,
+                            'current_longitude' => $dispatch->responder->current_longitude ? (float) $dispatch->responder->current_longitude : null,
+                            'responder_status' => $dispatch->responder->responder_status,
+                            'location_updated_at' => $dispatch->responder->location_updated_at?->toIso8601String(),
+                        ] : null,
+                    ];
+                })->toArray(),
             ];
         })->toArray();
     }

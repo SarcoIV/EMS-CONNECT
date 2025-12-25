@@ -2,14 +2,39 @@ import { useEffect, useState, useCallback } from 'react';
 import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
+import { ResponderTrackingModal } from '@/components/admin/ResponderTrackingModal';
 import { CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Bar, BarChart } from 'recharts';
 import axios from 'axios';
+import echo from '@/echo';
 
 interface User {
     id: number;
     name: string;
     email: string;
     phone_number?: string;
+}
+
+interface Responder {
+    id: number;
+    name: string;
+    current_latitude: number | null;
+    current_longitude: number | null;
+    responder_status: string;
+    location_updated_at: string;
+}
+
+interface Dispatch {
+    id: number;
+    responder_id: number;
+    status: string;
+    distance_meters: number;
+    distance_text: string;
+    duration_text: string;
+    assigned_at: string;
+    accepted_at?: string;
+    en_route_at?: string;
+    arrived_at?: string;
+    responder: Responder | null;
 }
 
 interface Incident {
@@ -24,6 +49,7 @@ interface Incident {
     dispatched_at?: string;
     completed_at?: string;
     user?: User;
+    dispatches: Dispatch[];
 }
 
 interface ActiveCall {
@@ -98,6 +124,8 @@ export default function AdminDashboard({
     const [incidentTypes, setIncidentTypes] = useState<IncidentType[]>(initialTypes);
     const [isLoading, setIsLoading] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+    const [selectedDispatch, setSelectedDispatch] = useState<{dispatch: Dispatch, incident: Incident} | null>(null);
+    const [trackingModalOpen, setTrackingModalOpen] = useState(false);
 
     // Fetch real-time stats
     const fetchStats = useCallback(async () => {
@@ -126,7 +154,7 @@ export default function AdminDashboard({
     // Set up polling
     useEffect(() => {
         console.log('[DASHBOARD] 🚀 Starting real-time updates (every 10 seconds)');
-        
+
         const interval = setInterval(fetchStats, POLL_INTERVAL);
 
         return () => {
@@ -134,6 +162,43 @@ export default function AdminDashboard({
             clearInterval(interval);
         };
     }, [fetchStats]);
+
+    // Set up Echo listeners for real-time responder updates
+    useEffect(() => {
+        console.log('[DASHBOARD] 📡 Setting up real-time responder location listeners');
+
+        const channel = echo.channel('admin-dashboard');
+
+        channel.listen('ResponderLocationUpdated', (event: any) => {
+            console.log('[DASHBOARD] 📍 Responder location updated:', event);
+
+            // Update incidents with new responder location
+            setRecentIncidents(prev => prev.map(incident => ({
+                ...incident,
+                dispatches: incident.dispatches.map(dispatch => {
+                    if (dispatch.responder_id === event.responder_id) {
+                        return {
+                            ...dispatch,
+                            responder: {
+                                ...dispatch.responder!,
+                                current_latitude: event.latitude,
+                                current_longitude: event.longitude,
+                                responder_status: event.status,
+                                location_updated_at: event.updated_at,
+                            }
+                        };
+                    }
+                    return dispatch;
+                })
+            })));
+        });
+
+        return () => {
+            console.log('[DASHBOARD] 📡 Cleaning up responder location listeners');
+            channel.stopListening('ResponderLocationUpdated');
+            echo.leaveChannel('admin-dashboard');
+        };
+    }, []);
 
     // Dispatch incident (pending → dispatched)
     const handleDispatch = async (incidentId: number) => {
@@ -518,35 +583,88 @@ export default function AdminDashboard({
                                                         {formatTimeAgo(incident.created_at)}
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <div className="flex items-center gap-1">
-                                                            <a
-                                                                href={`/admin/live-map?incident=${incident.id}`}
-                                                                className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                                                                title="View on map"
-                                                            >
-                                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                                                                </svg>
-                                                            </a>
-                                                            {incident.status === 'pending' && (
+                                                        <div className="flex flex-col gap-2">
+                                                            {/* Inline Responder Status */}
+                                                            {incident.dispatches.length > 0 && (
+                                                                <div className="space-y-1">
+                                                                    {incident.dispatches.slice(0, 2).map(dispatch => (
+                                                                        <div key={dispatch.id} className="flex items-center gap-2 text-xs">
+                                                                            <span className="font-medium text-blue-600">
+                                                                                {dispatch.responder?.name || 'Unknown'}
+                                                                            </span>
+                                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                                                                dispatch.status === 'en_route' ? 'bg-blue-100 text-blue-700' :
+                                                                                dispatch.status === 'arrived' ? 'bg-green-100 text-green-700' :
+                                                                                dispatch.status === 'accepted' ? 'bg-purple-100 text-purple-700' :
+                                                                                'bg-gray-100 text-gray-700'
+                                                                            }`}>
+                                                                                {dispatch.status.replace('_', ' ')}
+                                                                            </span>
+                                                                            {dispatch.distance_text !== 'N/A' && (
+                                                                                <span className="text-slate-500">
+                                                                                    {dispatch.distance_text} • {dispatch.duration_text}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                    {incident.dispatches.length > 2 && (
+                                                                        <span className="text-xs text-slate-400">
+                                                                            +{incident.dispatches.length - 2} more
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Action Buttons */}
+                                                            <div className="flex items-center gap-1">
+                                                                {/* Map Icon */}
                                                                 <a
-                                                                    href={`/admin/dispatch/${incident.id}`}
-                                                                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 inline-block"
-                                                                    title="Select responders and dispatch"
+                                                                    href={`/admin/live-map?incident=${incident.id}`}
+                                                                    className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                                                                    title="View on map"
                                                                 >
-                                                                    🚑 Dispatch
+                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                                                    </svg>
                                                                 </a>
-                                                            )}
-                                                            {incident.status === 'dispatched' && (
-                                                                <button
-                                                                    onClick={() => handleUpdateStatus(incident.id, 'completed')}
-                                                                    disabled={isLoading}
-                                                                    className="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-200 disabled:opacity-50"
-                                                                    title="Mark as resolved"
-                                                                >
-                                                                    Complete
-                                                                </button>
-                                                            )}
+
+                                                                {/* Track Button - shows only if there are active dispatches */}
+                                                                {incident.dispatches.length > 0 && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedDispatch({ dispatch: incident.dispatches[0], incident });
+                                                                            setTrackingModalOpen(true);
+                                                                        }}
+                                                                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
+                                                                        title="Track responder in real-time"
+                                                                    >
+                                                                        Track
+                                                                    </button>
+                                                                )}
+
+                                                                {/* Dispatch Button (pending only) */}
+                                                                {incident.status === 'pending' && (
+                                                                    <a
+                                                                        href={`/admin/dispatch/${incident.id}`}
+                                                                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 inline-block"
+                                                                        title="Select responders and dispatch"
+                                                                    >
+                                                                        Dispatch
+                                                                    </a>
+                                                                )}
+
+                                                                {/* Complete Button (dispatched only) */}
+                                                                {incident.status === 'dispatched' && (
+                                                                    <button
+                                                                        onClick={() => handleUpdateStatus(incident.id, 'completed')}
+                                                                        disabled={isLoading}
+                                                                        className="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-200 disabled:opacity-50"
+                                                                        title="Mark as resolved"
+                                                                    >
+                                                                        Complete
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -581,6 +699,19 @@ export default function AdminDashboard({
                     </div>
                 </main>
             </div>
+
+            {/* Responder Tracking Modal */}
+            {selectedDispatch && (
+                <ResponderTrackingModal
+                    dispatch={selectedDispatch.dispatch}
+                    incident={selectedDispatch.incident}
+                    isOpen={trackingModalOpen}
+                    onClose={() => {
+                        setTrackingModalOpen(false);
+                        setSelectedDispatch(null);
+                    }}
+                />
+            )}
         </div>
     );
 }
