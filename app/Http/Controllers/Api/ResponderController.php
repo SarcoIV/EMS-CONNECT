@@ -123,10 +123,35 @@ class ResponderController extends Controller
     public function updateStatus(Request $request)
     {
         try {
+            // LOG: Request received
+            Log::info('[RESPONDER] 🔔 Status update request received', [
+                'headers' => $request->headers->all(),
+                'body' => $request->all(),
+                'user_id' => $request->user()?->id,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
             $user = $request->user();
+
+            // LOG: User details
+            Log::info('[RESPONDER] 👤 User attempting status update', [
+                'user_id' => $user?->id,
+                'email' => $user?->email,
+                'role' => $user?->role,
+                'user_role' => $user?->user_role,
+                'current_is_on_duty' => $user?->is_on_duty,
+                'current_status' => $user?->responder_status,
+            ]);
 
             // Validate user is a responder
             if (!$user || !$user->isResponder()) {
+                Log::warning('[RESPONDER] ⚠️ Unauthorized status update attempt', [
+                    'user_id' => $user?->id,
+                    'role' => $user?->role,
+                    'is_responder' => $user?->isResponder(),
+                ]);
+
                 return response()->json([
                     'message' => 'Unauthorized. Only responders can update status.',
                 ], 403);

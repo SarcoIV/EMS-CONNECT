@@ -46,6 +46,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/user', [AuthController::class, 'user']);
 
     // -------------------------------------------------------------------------
+    // DEBUG ENDPOINT - TEMPORARY (Remove after fixing mobile app)
+    // -------------------------------------------------------------------------
+    Route::post('/debug/echo', function (\Illuminate\Http\Request $request) {
+        return response()->json([
+            'message' => 'Debug echo endpoint - shows exactly what the server received',
+            'headers' => $request->headers->all(),
+            'body' => $request->all(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'user' => $request->user() ? [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+                'role' => $request->user()->role,
+                'user_role' => $request->user()->user_role,
+                'is_on_duty' => $request->user()->is_on_duty,
+                'responder_status' => $request->user()->responder_status,
+            ] : null,
+        ]);
+    });
+
+    // -------------------------------------------------------------------------
     // Incident Routes
     // -------------------------------------------------------------------------
     Route::prefix('incidents')->group(function () {
