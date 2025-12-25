@@ -21,16 +21,16 @@ class GoogleMapsService
     private const CACHE_TTL_SECONDS = 900; // 15 minutes
     private const CACHE_PREFIX = 'google_maps_route';
 
-    private string $apiKey;
-    private string $baseUrl;
+    private ?string $apiKey;
+    private ?string $baseUrl;
 
     public function __construct()
     {
         $this->apiKey = config('services.google_maps.api_key');
-        $this->baseUrl = config('services.google_maps.base_url');
+        $this->baseUrl = config('services.google_maps.base_url', 'https://maps.googleapis.com/maps/api');
 
         if (empty($this->apiKey)) {
-            throw new \Exception('Google Maps API key is not configured');
+            throw new \Exception('Google Maps API key is not configured. Please set GOOGLE_MAPS_API_KEY in your .env file.');
         }
     }
 
