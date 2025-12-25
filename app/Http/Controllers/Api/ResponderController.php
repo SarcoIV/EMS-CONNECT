@@ -170,6 +170,7 @@ class ResponderController extends Controller
                     'is_on_duty' => $user->is_on_duty,
                     'responder_status' => $user->responder_status,
                     'duty_started_at' => $user->duty_started_at?->toIso8601String(),
+                    'duty_ended_at' => $user->duty_ended_at?->toIso8601String(),
                 ],
             ]);
         } catch (\Exception $e) {
