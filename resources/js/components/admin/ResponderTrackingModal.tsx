@@ -85,16 +85,22 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
     useEffect(() => {
         if (!map || !currentResponderLocation.latitude) return;
 
-        const bounds = new google.maps.LatLngBounds();
-        bounds.extend({ lat: incident.latitude, lng: incident.longitude });
-        bounds.extend({
-            lat: currentResponderLocation.latitude,
-            lng: currentResponderLocation.longitude
-        });
+        // Calculate bounds without using global google object
+        const allPoints = [
+            { lat: incident.latitude, lng: incident.longitude },
+            { lat: currentResponderLocation.latitude, lng: currentResponderLocation.longitude },
+            ...routeHistory.map(p => ({ lat: p.latitude, lng: p.longitude }))
+        ];
 
-        routeHistory.forEach(point => {
-            bounds.extend({ lat: point.latitude, lng: point.longitude });
-        });
+        const lats = allPoints.map(p => p.lat);
+        const lngs = allPoints.map(p => p.lng);
+
+        const bounds = {
+            north: Math.max(...lats),
+            south: Math.min(...lats),
+            east: Math.max(...lngs),
+            west: Math.min(...lngs)
+        };
 
         map.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
     }, [map, currentResponderLocation, routeHistory, incident]);
@@ -202,7 +208,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                                     <Marker
                                         position={{ lat: incident.latitude, lng: incident.longitude }}
                                         icon={{
-                                            path: google.maps.SymbolPath.CIRCLE,
+                                            path: 0, // CIRCLE symbol
                                             fillColor: '#ef4444',
                                             fillOpacity: 1,
                                             strokeColor: '#ffffff',
@@ -238,7 +244,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                                                     lng: routeHistory[0].longitude
                                                 }}
                                                 icon={{
-                                                    path: google.maps.SymbolPath.CIRCLE,
+                                                    path: 0, // CIRCLE symbol
                                                     fillColor: '#6b7280',
                                                     fillOpacity: 1,
                                                     strokeColor: '#ffffff',
@@ -258,7 +264,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                                                 lng: currentResponderLocation.longitude
                                             }}
                                             icon={{
-                                                path: google.maps.SymbolPath.CIRCLE,
+                                                path: 0, // CIRCLE symbol
                                                 fillColor: '#3b82f6',
                                                 fillOpacity: 1,
                                                 strokeColor: '#ffffff',
