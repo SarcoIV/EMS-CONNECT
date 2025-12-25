@@ -134,4 +134,20 @@ Route::middleware('auth:sanctum')->group(function () {
         // Admin: Answer a call
         Route::post('/answer', [CallController::class, 'answer']);
     });
+
+    // -------------------------------------------------------------------------
+    // Admin API Routes (Real-Time Data)
+    // -------------------------------------------------------------------------
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
+        // Get all active responders with their locations
+        Route::get('/responders/active', [\App\Http\Controllers\Admin\AdminApiController::class, 'getActiveResponders']);
+
+        // Get location history for a specific responder
+        Route::get('/responders/{responderId}/location-history', [\App\Http\Controllers\Admin\AdminApiController::class, 'getLocationHistory'])
+            ->where('responderId', '[0-9]+');
+
+        // Get pre-arrival forms for a specific incident
+        Route::get('/incidents/{incidentId}/pre-arrival', [\App\Http\Controllers\Admin\AdminApiController::class, 'getPreArrivalForms'])
+            ->where('incidentId', '[0-9]+');
+    });
 });
