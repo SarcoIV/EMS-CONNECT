@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
 import axios from 'axios';
 import echo from '@/echo';
+import type * as L from 'leaflet';
 
 interface User {
     id: number;
@@ -63,6 +64,8 @@ interface ResponderLocationUpdate {
     longitude: number;
     status: string;
     timestamp: string;
+    activeDispatchId?: number;
+    updated_at?: string;
 }
 
 interface RoutePoint {
@@ -113,13 +116,14 @@ export default function LiveMap({
     const [filterType, setFilterType] = useState<string>('all');
     const [showOnlyActive, setShowOnlyActive] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [responders, setResponders] = useState<Map<number, Responder>>(new Map());
     const [routeHistories, setRouteHistories] = useState<Map<number, RoutePoint[]>>(new Map());
     const [isTrackingMode, setIsTrackingMode] = useState(false);
-    const mapRef = useRef<any>(null);
+    const mapRef = useRef<L.Map | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
-    const markersRef = useRef<any[]>([]);
-    const responderMarkersRef = useRef<Map<number, any>>(new Map());
+    const markersRef = useRef<L.Marker[]>([]);
+    const responderMarkersRef = useRef<Map<number, L.Marker>>(new Map());
 
     // Filter incidents
     const filteredIncidents = incidents.filter(incident => {
@@ -128,6 +132,24 @@ export default function LiveMap({
         if (showOnlyActive && incident.status === 'completed') return false;
         return true;
     });
+
+    // Fetch route histories for active dispatches
+    const fetchRouteHistories = useCallback(async (dispatches: Array<{ id: number }>) => {
+        const histories = new Map<number, RoutePoint[]>();
+
+        await Promise.all(dispatches.map(async (dispatch) => {
+            try {
+                const response = await axios.get(`/admin/dispatches/${dispatch.id}/route-history`);
+                if (response.data.route_points && response.data.route_points.length > 0) {
+                    histories.set(dispatch.id, response.data.route_points);
+                }
+            } catch {
+                console.log(`[LIVEMAP] No route history for dispatch ${dispatch.id}`);
+            }
+        }));
+
+        setRouteHistories(histories);
+    }, []);
 
     // Fetch real-time data
     const fetchMapData = useCallback(async () => {
@@ -143,8 +165,8 @@ export default function LiveMap({
             updateMarkers(response.data.incidents || []);
 
             // Extract active dispatches from incidents and fetch route histories
-            const allDispatches: any[] = [];
-            (response.data.incidents || []).forEach((incident: any) => {
+            const allDispatches: Array<{ id: number }> = [];
+            (response.data.incidents || []).forEach((incident: Incident) => {
                 if (incident.dispatches && incident.dispatches.length > 0) {
                     allDispatches.push(...incident.dispatches);
                 }
@@ -165,8 +187,9 @@ export default function LiveMap({
             if (typeof window === 'undefined') return;
             
             const L = (await import('leaflet')).default;
-            
+
             // Fix Leaflet default icon issue
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             delete (L.Icon.Default.prototype as any)._getIconUrl;
             L.Icon.Default.mergeOptions({
                 iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
@@ -208,6 +231,7 @@ export default function LiveMap({
                 mapRef.current = null;
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Read URL parameters for tracking mode
@@ -296,24 +320,6 @@ export default function LiveMap({
         });
     };
 
-    // Fetch route histories for active dispatches
-    const fetchRouteHistories = useCallback(async (dispatches: any[]) => {
-        const histories = new Map<number, RoutePoint[]>();
-
-        await Promise.all(dispatches.map(async (dispatch) => {
-            try {
-                const response = await axios.get(`/admin/dispatches/${dispatch.id}/route-history`);
-                if (response.data.route_points && response.data.route_points.length > 0) {
-                    histories.set(dispatch.id, response.data.route_points);
-                }
-            } catch (err) {
-                console.log(`[LIVEMAP] No route history for dispatch ${dispatch.id}`);
-            }
-        }));
-
-        setRouteHistories(histories);
-    }, []);
-
     // Update responder markers on map
     const updateResponderMarker = async (responder: Responder) => {
         if (!mapRef.current) return;
@@ -380,7 +386,7 @@ export default function LiveMap({
         const L = (await import('leaflet')).default;
 
         // Clear existing polylines
-        mapRef.current.eachLayer((layer: any) => {
+        mapRef.current.eachLayer((layer: L.Layer) => {
             if (layer instanceof L.Polyline && !(layer instanceof L.Circle)) {
                 mapRef.current?.removeLayer(layer);
             }
@@ -459,18 +465,18 @@ export default function LiveMap({
             });
 
             // Update route history if responder has an active dispatch
-            if ((event as any).activeDispatchId) {
+            if (event.activeDispatchId) {
                 setRouteHistories(prev => {
                     const updated = new Map(prev);
-                    const existing = updated.get((event as any).activeDispatchId) || [];
+                    const existing = updated.get(event.activeDispatchId!) || [];
 
-                    updated.set((event as any).activeDispatchId, [
+                    updated.set(event.activeDispatchId!, [
                         ...existing,
                         {
                             latitude: event.latitude,
                             longitude: event.longitude,
                             accuracy: null,
-                            timestamp: (event as any).updated_at || new Date().toISOString(),
+                            timestamp: event.updated_at || new Date().toISOString(),
                         }
                     ]);
 
@@ -480,7 +486,7 @@ export default function LiveMap({
         });
 
         // Listen for pre-arrival form submissions
-        channel.listen('PreArrivalFormSubmitted', (event: any) => {
+        channel.listen('PreArrivalFormSubmitted', (event: unknown) => {
             console.log('[LIVEMAP] 📋 Pre-arrival form submitted:', event);
 
             // Show notification or update UI as needed
@@ -658,10 +664,10 @@ export default function LiveMap({
                             </div>
                             <div className="max-h-40 space-y-2 overflow-y-auto">
                                 {activeCalls.map(call => (
-                                    <div 
-                                        key={call.id} 
+                                    <div
+                                        key={call.id}
                                         className="cursor-pointer rounded-lg bg-white p-2 text-sm shadow-sm hover:bg-red-50"
-                                        onClick={() => call.incident && handleFocusIncident(call.incident as any)}
+                                        onClick={() => call.incident && handleFocusIncident(call.incident)}
                                     >
                                         <div className="flex items-center justify-between">
                                             <span className="font-medium">{call.user?.name || 'Unknown'}</span>
