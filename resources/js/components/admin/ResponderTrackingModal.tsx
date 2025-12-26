@@ -143,7 +143,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-4xl h-[80vh]">
+            <DialogContent className="max-w-[95vw] h-[90vh]">
                 <DialogHeader>
                     <DialogTitle>
                         Tracking: {dispatch.responder?.name || 'Responder'} → Incident #{incident.id}
@@ -222,6 +222,31 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                                         title={`Incident: ${incident.address}`}
                                     />
 
+                                    {/* Placeholder: Straight line from responder to incident (when no route history) */}
+                                    {routeHistory.length === 0 && currentResponderLocation.latitude && (
+                                        <Polyline
+                                            path={[
+                                                { lat: currentResponderLocation.latitude, lng: currentResponderLocation.longitude },
+                                                { lat: incident.latitude, lng: incident.longitude }
+                                            ]}
+                                            options={{
+                                                strokeColor: '#94a3b8',
+                                                strokeOpacity: 0.6,
+                                                strokeWeight: 3,
+                                                geodesic: true,
+                                                icons: [{
+                                                    icon: {
+                                                        path: 'M 0,-1 0,1',
+                                                        strokeOpacity: 1,
+                                                        scale: 2,
+                                                    },
+                                                    offset: '0',
+                                                    repeat: '10px',
+                                                }],
+                                            }}
+                                        />
+                                    )}
+
                                     {/* Route History Polyline */}
                                     {routeHistory.length > 0 && (
                                         <>
@@ -231,9 +256,10 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                                                     lng: p.longitude
                                                 }))}
                                                 options={{
-                                                    strokeColor: '#3b82f6',
-                                                    strokeOpacity: 0.7,
-                                                    strokeWeight: 4,
+                                                    strokeColor: '#2563eb',
+                                                    strokeOpacity: 0.9,
+                                                    strokeWeight: 6,
+                                                    geodesic: true,
                                                 }}
                                             />
 
