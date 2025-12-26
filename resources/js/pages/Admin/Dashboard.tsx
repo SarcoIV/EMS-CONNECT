@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
-import { ResponderTrackingModal } from '@/components/admin/ResponderTrackingModal';
 import { CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Bar, BarChart } from 'recharts';
 import axios from 'axios';
 import echo from '@/echo';
@@ -124,8 +123,6 @@ export default function AdminDashboard({
     const [incidentTypes, setIncidentTypes] = useState<IncidentType[]>(initialTypes);
     const [isLoading, setIsLoading] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-    const [selectedDispatch, setSelectedDispatch] = useState<{dispatch: Dispatch, incident: Incident} | null>(null);
-    const [trackingModalOpen, setTrackingModalOpen] = useState(false);
 
     // Fetch real-time stats
     const fetchStats = useCallback(async () => {
@@ -630,16 +627,13 @@ export default function AdminDashboard({
 
                                                                 {/* Track Button - shows only if there are active dispatches */}
                                                                 {incident.dispatches.length > 0 && (
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            setSelectedDispatch({ dispatch: incident.dispatches[0], incident });
-                                                                            setTrackingModalOpen(true);
-                                                                        }}
-                                                                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
-                                                                        title="Track responder in real-time"
+                                                                    <a
+                                                                        href={`/admin/live-map?incident=${incident.id}&track=true`}
+                                                                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 inline-block"
+                                                                        title="Track responder in real-time on Live Map"
                                                                     >
                                                                         Track
-                                                                    </button>
+                                                                    </a>
                                                                 )}
 
                                                                 {/* Dispatch Button (pending only) */}
@@ -699,19 +693,6 @@ export default function AdminDashboard({
                     </div>
                 </main>
             </div>
-
-            {/* Responder Tracking Modal */}
-            {selectedDispatch && (
-                <ResponderTrackingModal
-                    dispatch={selectedDispatch.dispatch}
-                    incident={selectedDispatch.incident}
-                    isOpen={trackingModalOpen}
-                    onClose={() => {
-                        setTrackingModalOpen(false);
-                        setSelectedDispatch(null);
-                    }}
-                />
-            )}
         </div>
     );
 }

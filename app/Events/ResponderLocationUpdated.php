@@ -42,6 +42,9 @@ class ResponderLocationUpdated implements ShouldBroadcast
      */
     public function broadcastWith(): array
     {
+        // Get active dispatch ID if responder has one
+        $activeDispatch = $this->responder->activeDispatch;
+
         return [
             'responder_id' => $this->responder->id,
             'name' => $this->responder->name,
@@ -50,6 +53,7 @@ class ResponderLocationUpdated implements ShouldBroadcast
             'status' => $this->responder->responder_status,
             'is_on_duty' => $this->responder->is_on_duty,
             'updated_at' => $this->responder->location_updated_at?->toIso8601String(),
+            'activeDispatchId' => $activeDispatch?->id,
         ];
     }
 }

@@ -65,6 +65,13 @@ interface ResponderLocationUpdate {
     timestamp: string;
 }
 
+interface RoutePoint {
+    latitude: number;
+    longitude: number;
+    accuracy: number | null;
+    timestamp: string;
+}
+
 interface LiveMapProps {
     user: { name: string; email: string };
     incidents?: Incident[];
@@ -107,6 +114,8 @@ export default function LiveMap({
     const [showOnlyActive, setShowOnlyActive] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
     const [responders, setResponders] = useState<Map<number, Responder>>(new Map());
+    const [routeHistories, setRouteHistories] = useState<Map<number, RoutePoint[]>>(new Map());
+    const [isTrackingMode, setIsTrackingMode] = useState(false);
     const mapRef = useRef<any>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const markersRef = useRef<any[]>([]);
@@ -125,17 +134,29 @@ export default function LiveMap({
         try {
             console.log('[LIVEMAP] 🔄 Refreshing map data...');
             const response = await axios.get('/admin/live-map/data');
-            
+
             setIncidents(response.data.incidents || []);
             setActiveCalls(response.data.activeCalls || []);
             setLastUpdated(new Date());
 
             // Update markers on map
             updateMarkers(response.data.incidents || []);
+
+            // Extract active dispatches from incidents and fetch route histories
+            const allDispatches: any[] = [];
+            (response.data.incidents || []).forEach((incident: any) => {
+                if (incident.dispatches && incident.dispatches.length > 0) {
+                    allDispatches.push(...incident.dispatches);
+                }
+            });
+
+            if (allDispatches.length > 0) {
+                fetchRouteHistories(allDispatches);
+            }
         } catch (error) {
             console.error('[LIVEMAP] ❌ Failed to fetch map data:', error);
         }
-    }, []);
+    }, [fetchRouteHistories]);
 
     // Initialize map
     useEffect(() => {
@@ -187,6 +208,19 @@ export default function LiveMap({
                 mapRef.current = null;
             }
         };
+    }, []);
+
+    // Read URL parameters for tracking mode
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const params = new URLSearchParams(window.location.search);
+        const trackParam = params.get('track');
+
+        if (trackParam === 'true') {
+            setIsTrackingMode(true);
+            console.log('[LIVEMAP] 🎯 Tracking mode enabled');
+        }
     }, []);
 
     // Update markers on map
@@ -262,6 +296,24 @@ export default function LiveMap({
         });
     };
 
+    // Fetch route histories for active dispatches
+    const fetchRouteHistories = useCallback(async (dispatches: any[]) => {
+        const histories = new Map<number, RoutePoint[]>();
+
+        await Promise.all(dispatches.map(async (dispatch) => {
+            try {
+                const response = await axios.get(`/admin/dispatches/${dispatch.id}/route-history`);
+                if (response.data.route_points && response.data.route_points.length > 0) {
+                    histories.set(dispatch.id, response.data.route_points);
+                }
+            } catch (err) {
+                console.log(`[LIVEMAP] No route history for dispatch ${dispatch.id}`);
+            }
+        }));
+
+        setRouteHistories(histories);
+    }, []);
+
     // Update responder markers on map
     const updateResponderMarker = async (responder: Responder) => {
         if (!mapRef.current) return;
@@ -321,6 +373,43 @@ export default function LiveMap({
         responderMarkersRef.current.set(responder.id, marker);
     };
 
+    // Draw route polylines for active dispatches
+    const drawRoutePolylines = useCallback(async () => {
+        if (!mapRef.current || routeHistories.size === 0) return;
+
+        const L = (await import('leaflet')).default;
+
+        // Clear existing polylines
+        mapRef.current.eachLayer((layer: any) => {
+            if (layer instanceof L.Polyline && !(layer instanceof L.Circle)) {
+                mapRef.current?.removeLayer(layer);
+            }
+        });
+
+        // Draw polylines for each dispatch
+        routeHistories.forEach((points, dispatchId) => {
+            if (points.length < 2) return; // Need at least 2 points for a line
+
+            const coords: [number, number][] = points.map(p => [p.latitude, p.longitude]);
+
+            const polyline = L.polyline(coords, {
+                color: '#3b82f6',
+                weight: 4,
+                opacity: 0.7,
+                smoothFactor: 1,
+            }).addTo(mapRef.current!);
+
+            // Add popup showing dispatch info
+            polyline.bindPopup(`
+                <div style="min-width: 150px;">
+                    <strong>Route History</strong><br/>
+                    Dispatch #${dispatchId}<br/>
+                    ${points.length} GPS points recorded
+                </div>
+            `);
+        });
+    }, [routeHistories]);
+
     // Set up polling
     useEffect(() => {
         console.log('[LIVEMAP] 🚀 Starting real-time map updates');
@@ -331,6 +420,11 @@ export default function LiveMap({
             clearInterval(interval);
         };
     }, [fetchMapData]);
+
+    // Draw route polylines when route histories change
+    useEffect(() => {
+        drawRoutePolylines();
+    }, [routeHistories, drawRoutePolylines]);
 
     // Set up Echo listeners for real-time updates
     useEffect(() => {
@@ -363,6 +457,26 @@ export default function LiveMap({
 
                 return updated;
             });
+
+            // Update route history if responder has an active dispatch
+            if ((event as any).activeDispatchId) {
+                setRouteHistories(prev => {
+                    const updated = new Map(prev);
+                    const existing = updated.get((event as any).activeDispatchId) || [];
+
+                    updated.set((event as any).activeDispatchId, [
+                        ...existing,
+                        {
+                            latitude: event.latitude,
+                            longitude: event.longitude,
+                            accuracy: null,
+                            timestamp: (event as any).updated_at || new Date().toISOString(),
+                        }
+                    ]);
+
+                    return updated;
+                });
+            }
         });
 
         // Listen for pre-arrival form submissions
@@ -470,6 +584,16 @@ export default function LiveMap({
                                 Show only active
                             </label>
                         </div>
+
+                        {/* Tracking Mode Indicator */}
+                        {isTrackingMode && (
+                            <div className="rounded-xl bg-blue-50 border-2 border-blue-300 p-3 shadow-lg">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                    <span className="text-sm font-medium text-blue-700">Live Tracking Mode</span>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Legend */}
                         <div className="rounded-xl bg-white p-3 shadow-lg">
