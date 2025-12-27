@@ -283,7 +283,7 @@ export default function Chats({ user }: ChatsProps) {
 
     return (
         <div className="flex h-screen overflow-hidden bg-gray-100">
-            <Sidebar />
+            <Sidebar user={user} />
 
             <div className="flex flex-1 flex-col overflow-hidden">
                 <Header title="Chats" />
