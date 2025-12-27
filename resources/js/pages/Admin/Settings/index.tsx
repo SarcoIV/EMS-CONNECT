@@ -107,7 +107,7 @@ export default function AdminSettings({ user, success }: SettingsProps) {
 
                                         <CardFooter>
                                             <Button type="submit" disabled={profileForm.processing || !profileForm.isDirty} className="ml-auto">
-                                                Save Changes
+                                                Save all Changes
                                             </Button>
                                         </CardFooter>
                                     </form>
