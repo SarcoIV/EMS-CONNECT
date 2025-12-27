@@ -51,10 +51,10 @@ Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMi
 |--------------------------------------------------------------------------
 */
 
+use App\Http\Controllers\Admin\AdminMessageController;
 use App\Http\Controllers\Admin\AdministrationController;
 use App\Http\Controllers\Admin\ArchiveController;
 use App\Http\Controllers\Admin\CallsController;
-use App\Http\Controllers\Admin\ChatsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DispatchController;
 use App\Http\Controllers\Admin\HospitalDirectoryController;
@@ -108,8 +108,14 @@ Route::middleware([AdminMiddleware::class])->group(function () {
     // User Edit
     Route::get('admin/user-edit', [UserEditController::class, 'index'])->name('admin.user-edit');
 
-    // Chats
-    Route::get('admin/chats', [ChatsController::class, 'index'])->name('admin.chats');
+    // Chats (Messaging System)
+    Route::prefix('admin/chats')->group(function () {
+        Route::get('/', [AdminMessageController::class, 'index'])->name('admin.chats');
+        Route::get('/conversations', [AdminMessageController::class, 'getConversations'])->name('admin.chats.conversations');
+        Route::get('/{incidentId}/messages', [AdminMessageController::class, 'getMessages'])->name('admin.chats.messages');
+        Route::post('/send', [AdminMessageController::class, 'sendMessage'])->name('admin.chats.send');
+        Route::post('/{incidentId}/mark-read', [AdminMessageController::class, 'markConversationAsRead'])->name('admin.chats.markRead');
+    });
 
     // Hospital Directory
     Route::get('admin/hospital-directory', [HospitalDirectoryController::class, 'index'])->name('admin.hospital-directory');
