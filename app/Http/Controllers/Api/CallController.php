@@ -5,12 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Call;
 use App\Models\Incident;
+use App\Services\AgoraService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class CallController extends Controller
 {
+    protected AgoraService $agoraService;
+
+    public function __construct(AgoraService $agoraService)
+    {
+        $this->agoraService = $agoraService;
+    }
     /**
      * Start a new emergency call.
      *
@@ -41,6 +48,9 @@ class CallController extends Controller
                 ->first();
 
             if ($activeCall) {
+                // Generate token for existing call
+                $token = $this->agoraService->generateRtcToken($activeCall->channel_name, $user->id);
+
                 return response()->json([
                     'call' => [
                         'id' => $activeCall->id,
@@ -53,6 +63,7 @@ class CallController extends Controller
                     ],
                     'channel_name' => $activeCall->channel_name,
                     'agora_app_id' => config('services.agora.app_id'),
+                    'agora_token' => $token,
                     'message' => 'You already have an active call.'
                 ], 200);
             }
@@ -83,6 +94,9 @@ class CallController extends Controller
                 'started_at' => now(),
             ]);
 
+            // Generate Agora token for the caller
+            $token = $this->agoraService->generateRtcToken($channelName, $user->id);
+
             Log::info('[CALLS] 📞 NEW EMERGENCY CALL FROM MOBILE APP', [
                 'call_id' => $call->id,
                 'user_id' => $user->id,
@@ -105,6 +119,7 @@ class CallController extends Controller
                 ],
                 'channel_name' => $channelName,
                 'agora_app_id' => config('services.agora.app_id'),
+                'agora_token' => $token,
             ], 201);
 
         } catch (\Exception $e) {
@@ -232,6 +247,9 @@ class CallController extends Controller
                 ], 200);
             }
 
+            // Generate token for active call
+            $token = $this->agoraService->generateRtcToken($call->channel_name, $user->id);
+
             return response()->json([
                 'has_active_call' => true,
                 'call' => [
@@ -245,6 +263,7 @@ class CallController extends Controller
                 ],
                 'channel_name' => $call->channel_name,
                 'agora_app_id' => config('services.agora.app_id'),
+                'agora_token' => $token,
             ], 200);
 
         } catch (\Exception $e) {
@@ -374,6 +393,9 @@ class CallController extends Controller
                 'answered_at' => now(),
             ]);
 
+            // Generate Agora token for the admin
+            $token = $this->agoraService->generateRtcToken($call->channel_name, $user->id);
+
             Log::info('Call answered by admin', [
                 'call_id' => $call->id,
                 'admin_id' => $user->id,
@@ -396,6 +418,7 @@ class CallController extends Controller
                 ],
                 'channel_name' => $call->channel_name,
                 'agora_app_id' => config('services.agora.app_id'),
+                'agora_token' => $token,
                 'message' => 'Call answered successfully.'
             ], 200);
 

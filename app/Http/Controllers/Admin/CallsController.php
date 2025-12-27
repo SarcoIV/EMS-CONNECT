@@ -4,11 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Call;
+use App\Services\AgoraService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class CallsController extends Controller
 {
+    protected AgoraService $agoraService;
+
+    public function __construct(AgoraService $agoraService)
+    {
+        $this->agoraService = $agoraService;
+    }
     /**
      * Get incoming calls for admin (calls with status 'active' that haven't been answered).
      *
@@ -149,6 +156,9 @@ class CallsController extends Controller
                 'answered_at' => now(),
             ]);
 
+            // Generate Agora token for the admin
+            $token = $this->agoraService->generateRtcToken($call->channel_name, $user->id);
+
             Log::info('[CALLS] ✅ CALL ANSWERED BY ADMIN', [
                 'call_id' => $call->id,
                 'channel_name' => $call->channel_name,
@@ -176,6 +186,7 @@ class CallsController extends Controller
                 ],
                 'channel_name' => $call->channel_name,
                 'agora_app_id' => config('services.agora.app_id'),
+                'agora_token' => $token,
                 'message' => 'Call answered successfully.'
             ], 200);
 
