@@ -7,7 +7,8 @@ import { createRoot } from 'react-dom/client';
 // import { initializeTheme } from './hooks/use-appearance';
 
 // Initialize Laravel Echo for real-time broadcasting
-import './echo';
+// Disabled: Broadcasting is set to 'log' in .env (no Pusher needed)
+// import './echo';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
