@@ -31,7 +31,6 @@ interface IncomingCall {
     incident: Incident | null;
 }
 
-const AGORA_APP_ID = 'c81a013cd0db4defabcbdb7d005fe627';
 const POLL_INTERVAL = 3000; // Poll every 3 seconds
 
 export function IncomingCallNotification() {
@@ -173,10 +172,13 @@ export function IncomingCallNotification() {
 
             console.log('[CALLS] ✅ Call answered successfully:', response.data);
 
+            // Extract Agora App ID from response
+            const { agora_app_id } = response.data;
+
             // Join Agora channel
             if (agoraClient.current) {
                 await agoraClient.current.join(
-                    AGORA_APP_ID,
+                    agora_app_id,
                     call.channel_name,
                     null, // token (null for App ID only mode)
                     null  // uid (null for auto-assign)
