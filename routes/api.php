@@ -123,17 +123,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Get active call for user
         Route::get('/active', [CallController::class, 'active']);
-    });
 
-    // -------------------------------------------------------------------------
-    // Admin Call Routes (Require admin role)
-    // -------------------------------------------------------------------------
-    Route::prefix('call')->middleware('role:admin')->group(function () {
-        // Admin: Get incoming calls
+        // Poll for incoming admin-initiated calls
         Route::get('/incoming', [CallController::class, 'incoming']);
 
-        // Admin: Answer a call
+        // Answer admin-initiated call
         Route::post('/answer', [CallController::class, 'answer']);
+
+        // Reject admin-initiated call
+        Route::post('/reject', [CallController::class, 'reject']);
     });
 
     // -------------------------------------------------------------------------

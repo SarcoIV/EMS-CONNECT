@@ -267,4 +267,202 @@ class CallsController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Initiate a call from admin to community user.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function initiateCall(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            // Only allow admin users to initiate calls
+            if (! $user || ! $user->isAdmin()) {
+                Log::warning('[CALLS] Unauthorized attempt to initiate call', [
+                    'user_id' => $user?->id,
+                    'user_role' => $user?->user_role,
+                ]);
+
+                return response()->json([
+                    'message' => 'Unauthorized. Admin access required.',
+                ], 403);
+            }
+
+            // Validate request
+            $validated = $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'incident_id' => 'nullable|exists:incidents,id',
+            ]);
+
+            // Check if community user exists and has correct role
+            $communityUser = \App\Models\User::find($validated['user_id']);
+            if (! $communityUser || $communityUser->role !== 'community') {
+                return response()->json([
+                    'message' => 'Invalid user. User must be a community member.',
+                    'errors' => [
+                        'user_id' => ['The specified user does not exist or is not a community user.'],
+                    ],
+                ], 422);
+            }
+
+            // Check if incident belongs to the user if incident_id is provided
+            if (isset($validated['incident_id'])) {
+                $incident = \App\Models\Incident::find($validated['incident_id']);
+                if (! $incident || $incident->user_id !== $communityUser->id) {
+                    return response()->json([
+                        'message' => 'Invalid incident. The incident must belong to the specified user.',
+                        'errors' => [
+                            'incident_id' => ['The incident does not belong to the specified user.'],
+                        ],
+                    ], 422);
+                }
+            }
+
+            // Check if admin already has an active call
+            $adminActiveCall = Call::where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhere('receiver_admin_id', $user->id);
+            })
+                ->where('status', 'active')
+                ->first();
+
+            if ($adminActiveCall) {
+                Log::info('[CALLS] Admin already has an active call', [
+                    'admin_id' => $user->id,
+                    'active_call_id' => $adminActiveCall->id,
+                ]);
+
+                return response()->json([
+                    'message' => 'You already have an active call.',
+                    'active_call' => [
+                        'id' => $adminActiveCall->id,
+                        'status' => $adminActiveCall->status,
+                    ],
+                ], 409);
+            }
+
+            // Check if community user already has an active call
+            $userActiveCall = Call::where(function ($query) use ($communityUser) {
+                $query->where('user_id', $communityUser->id)
+                    ->orWhere('receiver_admin_id', $communityUser->id);
+            })
+                ->where('status', 'active')
+                ->first();
+
+            if ($userActiveCall) {
+                Log::info('[CALLS] Community user already has an active call', [
+                    'user_id' => $communityUser->id,
+                    'active_call_id' => $userActiveCall->id,
+                ]);
+
+                return response()->json([
+                    'message' => 'User already has an active call.',
+                    'active_call' => [
+                        'id' => $userActiveCall->id,
+                        'status' => $userActiveCall->status,
+                    ],
+                ], 409);
+            }
+
+            // Generate unique channel name
+            $channelName = Call::generateChannelName($communityUser->id, $user->id);
+
+            // Create call record
+            $call = Call::create([
+                'user_id' => $communityUser->id, // Community user is the receiver
+                'receiver_admin_id' => $user->id, // Admin is the initiator
+                'incident_id' => $validated['incident_id'] ?? null,
+                'channel_name' => $channelName,
+                'status' => 'active',
+                'initiator_type' => 'admin',
+                'started_at' => now(),
+            ]);
+
+            Log::info('[CALLS] Admin initiated call to community user', [
+                'call_id' => $call->id,
+                'admin_id' => $user->id,
+                'admin_name' => $user->name,
+                'community_user_id' => $communityUser->id,
+                'community_user_name' => $communityUser->name,
+                'incident_id' => $call->incident_id,
+                'channel_name' => $channelName,
+            ]);
+
+            return response()->json([
+                'call' => $call,
+                'channel_name' => $channelName,
+                'agora_app_id' => config('services.agora.app_id'),
+                'message' => 'Call initiated successfully. Waiting for user to answer.',
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('[CALLS] Failed to initiate call', [
+                'error' => $e->getMessage(),
+                'admin_id' => $user?->id,
+                'user_id' => $validated['user_id'] ?? null,
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while initiating the call.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Get call status for admin to poll.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getCallStatus(Request $request, $callId)
+    {
+        try {
+            $user = $request->user();
+
+            // Only allow admin users
+            if (! $user || ! $user->isAdmin()) {
+                return response()->json([
+                    'message' => 'Unauthorized. Admin access required.',
+                ], 403);
+            }
+
+            $call = Call::find($callId);
+
+            if (! $call) {
+                return response()->json([
+                    'message' => 'Call not found.',
+                ], 404);
+            }
+
+            // Verify the authenticated admin is involved in the call
+            if ($call->receiver_admin_id !== $user->id) {
+                return response()->json([
+                    'message' => 'Unauthorized. You are not involved in this call.',
+                ], 403);
+            }
+
+            return response()->json([
+                'call' => [
+                    'id' => $call->id,
+                    'status' => $call->status,
+                    'answered_at' => $call->answered_at?->toIso8601String(),
+                    'ended_at' => $call->ended_at?->toIso8601String(),
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('[CALLS] Failed to get call status', [
+                'error' => $e->getMessage(),
+                'call_id' => $callId,
+                'admin_id' => $user?->id,
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while fetching call status.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
 }

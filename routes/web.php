@@ -51,8 +51,8 @@ Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMi
 |--------------------------------------------------------------------------
 */
 
-use App\Http\Controllers\Admin\AdminMessageController;
 use App\Http\Controllers\Admin\AdministrationController;
+use App\Http\Controllers\Admin\AdminMessageController;
 use App\Http\Controllers\Admin\ArchiveController;
 use App\Http\Controllers\Admin\CallsController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -128,6 +128,8 @@ Route::middleware([AdminMiddleware::class])->group(function () {
         Route::get('incoming', [CallsController::class, 'incoming'])->name('admin.calls.incoming');
         Route::post('answer', [CallsController::class, 'answer'])->name('admin.calls.answer');
         Route::post('end', [CallsController::class, 'end'])->name('admin.calls.end');
+        Route::post('initiate', [CallsController::class, 'initiateCall'])->name('admin.calls.initiate');
+        Route::get('{id}/status', [CallsController::class, 'getCallStatus'])->name('admin.calls.status');
     });
 });
 

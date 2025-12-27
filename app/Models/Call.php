@@ -21,6 +21,7 @@ class Call extends Model
         'ended_at',
         'receiver_admin_id', // For backward compatibility with admin answering
         'answered_at', // For backward compatibility with admin answering
+        'initiator_type', // Distinguishes who initiated the call
     ];
 
     /**
@@ -88,10 +89,42 @@ class Call extends Model
     /**
      * Generate unique channel name for mobile app.
      */
-    public static function generateChannelName(int $userId): string
+    public static function generateChannelName(int $userId, ?int $adminId = null): string
     {
         $timestamp = time();
 
+        if ($adminId) {
+            return "emergency_call_admin_{$adminId}_{$timestamp}";
+        }
+
         return "emergency_call_{$userId}_{$timestamp}";
+    }
+
+    /**
+     * Check if call was initiated by admin.
+     */
+    public function isAdminInitiated(): bool
+    {
+        return $this->initiator_type === 'admin';
+    }
+
+    /**
+     * Get the caller (initiator of the call).
+     */
+    public function getCaller(): User
+    {
+        return $this->isAdminInitiated()
+            ? $this->receiver()->first()
+            : $this->user()->first();
+    }
+
+    /**
+     * Get the receiver (person being called).
+     */
+    public function getReceiver(): User
+    {
+        return $this->isAdminInitiated()
+            ? $this->user()->first()
+            : $this->receiver()->first();
     }
 }

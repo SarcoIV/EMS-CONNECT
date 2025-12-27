@@ -3,7 +3,8 @@ import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
 import axios from 'axios';
-import { Send, Image as ImageIcon, X, Phone } from 'lucide-react';
+import { Send, Image as ImageIcon, X, Phone, PhoneOff, Mic, MicOff } from 'lucide-react';
+import AgoraRTC, { IAgoraRTCClient, IMicrophoneAudioTrack } from 'agora-rtc-sdk-ng';
 
 interface User {
     id: number;
@@ -55,6 +56,16 @@ interface IncidentInfo {
     user: User;
 }
 
+interface Call {
+    id: number;
+    incident_id: number | null;
+    channel_name: string;
+    status: string;
+    started_at: string;
+    answered_at: string | null;
+    ended_at: string | null;
+}
+
 interface ChatsProps {
     user: {
         id: number;
@@ -75,9 +86,23 @@ export default function Chats({ user }: ChatsProps) {
     const [isLoadingConversations, setIsLoadingConversations] = useState(true);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
+    // Call state
+    const [outgoingCall, setOutgoingCall] = useState<Call | null>(null);
+    const [isInitiatingCall, setIsInitiatingCall] = useState(false);
+    const [isInOutgoingCall, setIsInOutgoingCall] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
+    const [callDuration, setCallDuration] = useState(0);
+    const [callAnswered, setCallAnswered] = useState(false);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pollingIntervalRef = useRef<number | null>(null);
+
+    // Agora refs
+    const agoraClientRef = useRef<IAgoraRTCClient | null>(null);
+    const localAudioTrackRef = useRef<IMicrophoneAudioTrack | null>(null);
+    const callStatusPollRef = useRef<NodeJS.Timeout | null>(null);
+    const callDurationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Fetch conversations
     const fetchConversations = useCallback(async () => {
@@ -246,6 +271,25 @@ export default function Chats({ user }: ChatsProps) {
         }
     }, [messages.length]);
 
+    // Initialize Agora client
+    useEffect(() => {
+        const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        agoraClientRef.current = client;
+
+        return () => {
+            if (agoraClientRef.current) {
+                agoraClientRef.current.leave().catch(console.error);
+            }
+            // Cleanup on unmount
+            if (callStatusPollRef.current) {
+                clearInterval(callStatusPollRef.current);
+            }
+            if (callDurationIntervalRef.current) {
+                clearInterval(callDurationIntervalRef.current);
+            }
+        };
+    }, []);
+
     // Format timestamp
     const formatTime = (timestamp: string) => {
         const date = new Date(timestamp);
@@ -281,6 +325,141 @@ export default function Chats({ user }: ChatsProps) {
         return colors[type] || colors.other;
     };
 
+    // Call handling functions
+    const handleInitiateCall = async () => {
+        if (!selectedConversation) return;
+
+        try {
+            setIsInitiatingCall(true);
+
+            const response = await axios.post('/admin/calls/initiate', {
+                user_id: selectedConversation.user.id,
+                incident_id: selectedConversation.incident_id,
+            });
+
+            const { call, channel_name, agora_app_id } = response.data;
+            setOutgoingCall(call);
+
+            // Join Agora channel immediately
+            await joinAgoraChannel(agora_app_id, channel_name);
+
+            setIsInOutgoingCall(true);
+            setIsInitiatingCall(false);
+
+            // Start polling for answer
+            startCallStatusPolling(call.id);
+
+        } catch (error: any) {
+            console.error('Failed to initiate call:', error);
+            alert(error.response?.data?.message || 'Failed to initiate call. Please try again.');
+            setIsInitiatingCall(false);
+        }
+    };
+
+    const joinAgoraChannel = async (appId: string, channelName: string) => {
+        try {
+            const client = agoraClientRef.current;
+            if (!client) return;
+
+            await client.join(appId, channelName, null, null);
+
+            // Create and publish microphone track
+            const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+            localAudioTrackRef.current = audioTrack;
+            await client.publish([audioTrack]);
+
+            console.log('[CALLS] Admin joined channel:', channelName);
+
+        } catch (error) {
+            console.error('[CALLS] Failed to join Agora:', error);
+            throw error;
+        }
+    };
+
+    const startCallStatusPolling = (callId: number) => {
+        const interval = setInterval(async () => {
+            try {
+                const response = await axios.get(`/admin/calls/${callId}/status`);
+                const { answered_at, status } = response.data.call;
+
+                if (answered_at && !callAnswered) {
+                    // User answered
+                    setCallAnswered(true);
+                    startCallDurationTimer();
+                    console.log('[CALLS] User answered the call');
+                }
+
+                if (status === 'ended') {
+                    // Call ended
+                    clearInterval(interval);
+                    await handleEndOutgoingCall();
+                }
+            } catch (error) {
+                console.error('[CALLS] Failed to poll status:', error);
+            }
+        }, 2000);
+
+        callStatusPollRef.current = interval;
+    };
+
+    const startCallDurationTimer = () => {
+        setCallDuration(0);
+        const interval = setInterval(() => {
+            setCallDuration(prev => prev + 1);
+        }, 1000);
+        callDurationIntervalRef.current = interval;
+    };
+
+    const handleEndOutgoingCall = async () => {
+        try {
+            if (outgoingCall) {
+                await axios.post('/admin/calls/end', {
+                    call_id: outgoingCall.id
+                });
+            }
+
+            // Cleanup Agora
+            if (localAudioTrackRef.current) {
+                localAudioTrackRef.current.close();
+                localAudioTrackRef.current = null;
+            }
+
+            if (agoraClientRef.current) {
+                await agoraClientRef.current.leave();
+                // Re-initialize client for future calls
+                const newClient = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+                agoraClientRef.current = newClient;
+            }
+
+            // Clear intervals
+            if (callStatusPollRef.current) {
+                clearInterval(callStatusPollRef.current);
+                callStatusPollRef.current = null;
+            }
+            if (callDurationIntervalRef.current) {
+                clearInterval(callDurationIntervalRef.current);
+                callDurationIntervalRef.current = null;
+            }
+
+            // Reset state
+            setOutgoingCall(null);
+            setIsInOutgoingCall(false);
+            setCallAnswered(false);
+            setCallDuration(0);
+            setIsMuted(false);
+
+        } catch (error) {
+            console.error('[CALLS] Failed to end call:', error);
+        }
+    };
+
+    const toggleMute = async () => {
+        if (localAudioTrackRef.current) {
+            await localAudioTrackRef.current.setEnabled(isMuted);
+            setIsMuted(!isMuted);
+        }
+    };
+
     return (
         <div className="flex h-screen overflow-hidden bg-gray-100">
             <Sidebar user={user} />
@@ -288,6 +467,44 @@ export default function Chats({ user }: ChatsProps) {
             <div className="flex flex-1 flex-col overflow-hidden">
                 <Header title="Chats" />
                 <IncomingCallNotification />
+
+                {/* Outgoing Call Modal */}
+                {isInOutgoingCall && outgoingCall && selectedConversation && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-96">
+                            <div className="text-center">
+                                <div className="w-16 h-16 rounded-full bg-red-600 text-white flex items-center justify-center mx-auto mb-4 text-2xl font-semibold">
+                                    {selectedConversation.user.name.charAt(0).toUpperCase()}
+                                </div>
+                                <h3 className="text-xl font-semibold mb-2">
+                                    {selectedConversation.user.name}
+                                </h3>
+                                <p className="text-gray-600 mb-4">
+                                    {callAnswered
+                                        ? `Call duration: ${Math.floor(callDuration / 60)}:${(callDuration % 60).toString().padStart(2, '0')}`
+                                        : 'Calling...'}
+                                </p>
+
+                                <div className="flex justify-center gap-4">
+                                    <button
+                                        onClick={toggleMute}
+                                        className={`p-4 rounded-full ${isMuted ? 'bg-gray-200' : 'bg-gray-100'}`}
+                                        title={isMuted ? 'Unmute' : 'Mute'}
+                                    >
+                                        {isMuted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+                                    </button>
+                                    <button
+                                        onClick={handleEndOutgoingCall}
+                                        className="p-4 rounded-full bg-red-600 text-white hover:bg-red-700"
+                                        title="End call"
+                                    >
+                                        <PhoneOff className="h-6 w-6" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <main className="flex-1 overflow-hidden bg-white">
                     <div className="flex h-full">
@@ -411,7 +628,12 @@ export default function Chats({ user }: ChatsProps) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                            <button
+                                                onClick={handleInitiateCall}
+                                                disabled={isInitiatingCall || isInOutgoingCall}
+                                                className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title="Call user"
+                                            >
                                                 <Phone className="h-5 w-5 text-gray-600" />
                                             </button>
                                         </div>

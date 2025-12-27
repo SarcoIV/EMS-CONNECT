@@ -405,6 +405,240 @@ class CallController extends Controller
     }
 
     /**
+     * Poll for incoming admin-initiated calls.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function incoming(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            // Get admin-initiated calls for this user that haven't been answered yet
+            $call = Call::with(['receiver:id,name,email', 'incident'])
+                ->where('user_id', $user->id)
+                ->where('initiator_type', 'admin')
+                ->where('status', 'active')
+                ->whereNull('answered_at')
+                ->orderBy('started_at', 'desc')
+                ->first();
+
+            if (! $call) {
+                return response()->json([
+                    'has_incoming_call' => false,
+                    'call' => null,
+                ], 200);
+            }
+
+            Log::info('[CALLS] Mobile user polling detected incoming admin call', [
+                'call_id' => $call->id,
+                'user_id' => $user->id,
+                'admin_id' => $call->receiver_admin_id,
+            ]);
+
+            return response()->json([
+                'has_incoming_call' => true,
+                'call' => [
+                    'id' => $call->id,
+                    'incident_id' => $call->incident_id,
+                    'channel_name' => $call->channel_name,
+                    'admin_caller' => [
+                        'id' => $call->receiver->id,
+                        'name' => $call->receiver->name,
+                        'email' => $call->receiver->email,
+                    ],
+                    'incident' => $call->incident ? [
+                        'id' => $call->incident->id,
+                        'type' => $call->incident->type,
+                        'location' => $call->incident->location,
+                        'description' => $call->incident->description,
+                    ] : null,
+                    'started_at' => $call->started_at->toIso8601String(),
+                ],
+                'agora_app_id' => config('services.agora.app_id'),
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('[CALLS] Failed to poll for incoming admin calls', [
+                'error' => $e->getMessage(),
+                'user_id' => $user?->id,
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while checking for incoming calls.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Answer an admin-initiated call.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function answer(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            // Validate request
+            $validated = $request->validate([
+                'call_id' => 'required|exists:calls,id',
+            ]);
+
+            $call = Call::with(['receiver', 'incident'])->find($validated['call_id']);
+
+            if (! $call) {
+                return response()->json([
+                    'message' => 'Call not found.',
+                ], 404);
+            }
+
+            // Verify the call belongs to the authenticated user
+            if ($call->user_id !== $user->id) {
+                Log::warning('[CALLS] Unauthorized attempt to answer call', [
+                    'call_id' => $call->id,
+                    'user_id' => $user->id,
+                    'call_user_id' => $call->user_id,
+                ]);
+
+                return response()->json([
+                    'message' => 'Unauthorized. This call does not belong to you.',
+                ], 403);
+            }
+
+            // Verify call is admin-initiated
+            if ($call->initiator_type !== 'admin') {
+                return response()->json([
+                    'message' => 'Invalid call type. This endpoint is for admin-initiated calls only.',
+                ], 422);
+            }
+
+            // Verify call is active and unanswered
+            if ($call->status !== 'active') {
+                return response()->json([
+                    'message' => 'Call is not active.',
+                ], 422);
+            }
+
+            if ($call->answered_at !== null) {
+                return response()->json([
+                    'message' => 'Call has already been answered.',
+                ], 422);
+            }
+
+            // Update call as answered
+            $call->update([
+                'answered_at' => now(),
+            ]);
+
+            Log::info('[CALLS] Community user answered admin-initiated call', [
+                'call_id' => $call->id,
+                'user_id' => $user->id,
+                'admin_id' => $call->receiver_admin_id,
+                'answered_at' => $call->answered_at->toIso8601String(),
+            ]);
+
+            return response()->json([
+                'call' => [
+                    'id' => $call->id,
+                    'incident_id' => $call->incident_id,
+                    'channel_name' => $call->channel_name,
+                    'admin_caller' => [
+                        'id' => $call->receiver->id,
+                        'name' => $call->receiver->name,
+                    ],
+                    'status' => $call->status,
+                    'started_at' => $call->started_at->toIso8601String(),
+                    'answered_at' => $call->answered_at->toIso8601String(),
+                ],
+                'channel_name' => $call->channel_name,
+                'agora_app_id' => config('services.agora.app_id'),
+                'message' => 'Call answered successfully.',
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('[CALLS] Failed to answer admin-initiated call', [
+                'error' => $e->getMessage(),
+                'user_id' => $user?->id,
+                'call_id' => $validated['call_id'] ?? null,
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while answering the call.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Reject an admin-initiated call.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function reject(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            // Validate request
+            $validated = $request->validate([
+                'call_id' => 'required|exists:calls,id',
+            ]);
+
+            $call = Call::find($validated['call_id']);
+
+            if (! $call) {
+                return response()->json([
+                    'message' => 'Call not found.',
+                ], 404);
+            }
+
+            // Verify the call belongs to the authenticated user
+            if ($call->user_id !== $user->id) {
+                Log::warning('[CALLS] Unauthorized attempt to reject call', [
+                    'call_id' => $call->id,
+                    'user_id' => $user->id,
+                    'call_user_id' => $call->user_id,
+                ]);
+
+                return response()->json([
+                    'message' => 'Unauthorized. This call does not belong to you.',
+                ], 403);
+            }
+
+            // End the call
+            $call->update([
+                'status' => 'ended',
+                'ended_at' => now(),
+            ]);
+
+            Log::info('[CALLS] Community user rejected admin-initiated call', [
+                'call_id' => $call->id,
+                'user_id' => $user->id,
+                'admin_id' => $call->receiver_admin_id,
+                'ended_at' => $call->ended_at->toIso8601String(),
+            ]);
+
+            return response()->json([
+                'message' => 'Call rejected successfully.',
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('[CALLS] Failed to reject admin-initiated call', [
+                'error' => $e->getMessage(),
+                'user_id' => $user?->id,
+                'call_id' => $validated['call_id'] ?? null,
+            ]);
+
+            return response()->json([
+                'message' => 'An error occurred while rejecting the call.',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
      * Format call for API response.
      */
     private function formatCall(Call $call): array
