@@ -1,24 +1,23 @@
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
+// Mock Echo implementation to prevent Pusher initialization errors
+// This provides a compatible API without actually connecting to Pusher
+// Broadcasting is disabled (BROADCAST_CONNECTION=log) so we use polling instead
 
-// Make Pusher available globally for Laravel Echo
-window.Pusher = Pusher;
+interface MockChannel {
+  listen: (event: string, callback: any) => MockChannel;
+  stopListening: (event: string) => MockChannel;
+}
 
-// Initialize Laravel Echo
-const echo = new Echo({
-    broadcaster: 'pusher',
-    key: import.meta.env.VITE_PUSHER_APP_KEY,
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-    forceTLS: true,
-    encrypted: true,
+class MockEcho {
+  channel(channelName: string): MockChannel {
+    return {
+      listen: (event: string, callback: any) => this.channel(channelName),
+      stopListening: (event: string) => this.channel(channelName),
+    };
+  }
 
-    // Enable authorization for private/presence channels
-    authEndpoint: '/broadcasting/auth',
-    auth: {
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-        },
-    },
-});
+  leaveChannel(channelName: string): void {
+    // Mock implementation - does nothing
+  }
+}
 
-export default echo;
+export default new MockEcho();

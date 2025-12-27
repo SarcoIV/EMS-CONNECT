@@ -3,7 +3,6 @@ import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
 import axios from 'axios';
-import echo from '@/echo';
 import type * as L from 'leaflet';
 
 interface User {
@@ -163,6 +162,34 @@ export default function LiveMap({
 
             // Update markers on map
             updateMarkers(response.data.incidents || []);
+
+            // Update responder markers from activeDispatches (replaces Echo real-time updates)
+            if (response.data.activeDispatches) {
+                response.data.activeDispatches.forEach((dispatch: any) => {
+                    if (dispatch.responder && dispatch.responder.current_latitude) {
+                        const responder: Responder = {
+                            id: dispatch.responder_id,
+                            name: dispatch.responder.name,
+                            latitude: dispatch.responder.current_latitude,
+                            longitude: dispatch.responder.current_longitude,
+                            status: dispatch.responder.responder_status,
+                            activeDispatch: {
+                                id: dispatch.id,
+                                incident_id: dispatch.incident_id,
+                                status: dispatch.status,
+                            },
+                        };
+
+                        setResponders(prev => {
+                            const updated = new Map(prev);
+                            updated.set(responder.id, responder);
+                            return updated;
+                        });
+
+                        updateResponderMarker(responder);
+                    }
+                });
+            }
 
             // Extract active dispatches from incidents and fetch route histories
             const allDispatches: Array<{ id: number }> = [];
@@ -431,75 +458,6 @@ export default function LiveMap({
     useEffect(() => {
         drawRoutePolylines();
     }, [routeHistories, drawRoutePolylines]);
-
-    // Set up Echo listeners for real-time updates
-    useEffect(() => {
-        console.log('[LIVEMAP] 📡 Setting up real-time broadcasting listeners');
-
-        // Listen to admin-dashboard channel
-        const channel = echo.channel('admin-dashboard');
-
-        // Listen for responder location updates
-        channel.listen('ResponderLocationUpdated', (event: ResponderLocationUpdate) => {
-            console.log('[LIVEMAP] 📍 Responder location updated:', event);
-
-            setResponders(prev => {
-                const updated = new Map(prev);
-                const existing = updated.get(event.responder_id);
-
-                const responder: Responder = {
-                    id: event.responder_id,
-                    name: existing?.name || `Responder #${event.responder_id}`,
-                    latitude: event.latitude,
-                    longitude: event.longitude,
-                    status: event.status,
-                    activeDispatch: existing?.activeDispatch,
-                };
-
-                updated.set(event.responder_id, responder);
-
-                // Update marker on map
-                updateResponderMarker(responder);
-
-                return updated;
-            });
-
-            // Update route history if responder has an active dispatch
-            if (event.activeDispatchId) {
-                setRouteHistories(prev => {
-                    const updated = new Map(prev);
-                    const existing = updated.get(event.activeDispatchId!) || [];
-
-                    updated.set(event.activeDispatchId!, [
-                        ...existing,
-                        {
-                            latitude: event.latitude,
-                            longitude: event.longitude,
-                            accuracy: null,
-                            timestamp: event.updated_at || new Date().toISOString(),
-                        }
-                    ]);
-
-                    return updated;
-                });
-            }
-        });
-
-        // Listen for pre-arrival form submissions
-        channel.listen('PreArrivalFormSubmitted', (event: unknown) => {
-            console.log('[LIVEMAP] 📋 Pre-arrival form submitted:', event);
-
-            // Show notification or update UI as needed
-            // You can add a toast notification here
-        });
-
-        return () => {
-            console.log('[LIVEMAP] 📡 Cleaning up broadcasting listeners');
-            channel.stopListening('ResponderLocationUpdated');
-            channel.stopListening('PreArrivalFormSubmitted');
-            echo.leaveChannel('admin-dashboard');
-        };
-    }, []);
 
     // Focus on incident
     const handleFocusIncident = (incident: Incident) => {

@@ -5,7 +5,6 @@ import { IncomingCallNotification } from '@/components/admin/IncomingCallNotific
 import { ResponderTrackingModal } from '@/components/admin/ResponderTrackingModal';
 import { CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend, Bar, BarChart } from 'recharts';
 import axios from 'axios';
-import echo from '@/echo';
 
 interface User {
     id: number;
@@ -162,43 +161,6 @@ export default function AdminDashboard({
             clearInterval(interval);
         };
     }, [fetchStats]);
-
-    // Set up Echo listeners for real-time responder updates
-    useEffect(() => {
-        console.log('[DASHBOARD] 📡 Setting up real-time responder location listeners');
-
-        const channel = echo.channel('admin-dashboard');
-
-        channel.listen('ResponderLocationUpdated', (event: any) => {
-            console.log('[DASHBOARD] 📍 Responder location updated:', event);
-
-            // Update incidents with new responder location
-            setRecentIncidents(prev => prev.map(incident => ({
-                ...incident,
-                dispatches: incident.dispatches.map(dispatch => {
-                    if (dispatch.responder_id === event.responder_id) {
-                        return {
-                            ...dispatch,
-                            responder: {
-                                ...dispatch.responder!,
-                                current_latitude: event.latitude,
-                                current_longitude: event.longitude,
-                                responder_status: event.status,
-                                location_updated_at: event.updated_at,
-                            }
-                        };
-                    }
-                    return dispatch;
-                })
-            })));
-        });
-
-        return () => {
-            console.log('[DASHBOARD] 📡 Cleaning up responder location listeners');
-            channel.stopListening('ResponderLocationUpdated');
-            echo.leaveChannel('admin-dashboard');
-        };
-    }, []);
 
     // Dispatch incident (pending → dispatched)
     const handleDispatch = async (incidentId: number) => {

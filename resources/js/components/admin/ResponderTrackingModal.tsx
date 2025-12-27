@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
 import axios from 'axios';
-import echo from '@/echo';
 
 interface RoutePoint {
     latitude: number;
@@ -55,31 +54,68 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
 
-    // Fetch route history when modal opens
+    // Poll for route history updates while modal is open (replaces Echo real-time updates)
     useEffect(() => {
         if (!isOpen) return;
 
-        const fetchRouteHistory = async () => {
-            setIsLoading(true);
-            setError(null);
+        let isFirstFetch = true;
+
+        const pollRouteHistory = async () => {
+            // Show loading only on first fetch
+            if (isFirstFetch) {
+                setIsLoading(true);
+                setError(null);
+            }
 
             try {
                 const response = await axios.get(`/admin/dispatches/${dispatch.id}/route-history`);
-                setRouteHistory(response.data.route_points || []);
-                console.log('[TRACKING MODAL] Route history loaded:', response.data.route_points?.length || 0, 'points');
+                const points = response.data.route_points || [];
+
+                setRouteHistory(points);
+
+                if (isFirstFetch) {
+                    console.log('[TRACKING MODAL] Route history loaded:', points.length, 'points');
+                }
+
+                // Update current responder location from latest point
+                if (points.length > 0) {
+                    const latestPoint = points[points.length - 1];
+                    setCurrentResponderLocation({
+                        latitude: latestPoint.latitude,
+                        longitude: latestPoint.longitude,
+                    });
+
+                    // Pan map to follow responder
+                    if (map) {
+                        map.panTo({ lat: latestPoint.latitude, lng: latestPoint.longitude });
+                    }
+                }
             } catch (err: any) {
-                console.error('[TRACKING MODAL] Failed to fetch route history:', err);
-                // Don't set error - just show map without route history
-                // This is normal for newly assigned dispatches
-                setRouteHistory([]);
-                console.log('[TRACKING MODAL] No route history available yet - showing current location only');
+                if (isFirstFetch) {
+                    console.error('[TRACKING MODAL] Failed to fetch route history:', err);
+                    setRouteHistory([]);
+                    console.log('[TRACKING MODAL] No route history available yet - showing current location only');
+                }
             } finally {
-                setIsLoading(false);
+                if (isFirstFetch) {
+                    setIsLoading(false);
+                    isFirstFetch = false;
+                }
             }
         };
 
-        fetchRouteHistory();
-    }, [isOpen, dispatch.id]);
+        // Initial fetch
+        pollRouteHistory();
+
+        // Poll every 5 seconds
+        console.log('[TRACKING MODAL] Starting route history polling (every 5 seconds)');
+        const interval = setInterval(pollRouteHistory, 5000);
+
+        return () => {
+            console.log('[TRACKING MODAL] Stopping route history polling');
+            clearInterval(interval);
+        };
+    }, [isOpen, dispatch.id, map]);
 
     // Fit bounds when map loads or data changes
     useEffect(() => {
@@ -104,42 +140,6 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
 
         map.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
     }, [map, currentResponderLocation, routeHistory, incident]);
-
-    // Subscribe to real-time location updates
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const channel = echo.channel('admin-dashboard');
-
-        channel.listen('ResponderLocationUpdated', (event: any) => {
-            if (event.responder_id !== dispatch.responder_id) return;
-
-            console.log('[TRACKING MODAL] Responder location updated:', event);
-
-            // Update current location state
-            setCurrentResponderLocation({
-                latitude: event.latitude,
-                longitude: event.longitude,
-            });
-
-            // Add to route history state (polyline will auto-update via state)
-            setRouteHistory(prev => [...prev, {
-                latitude: event.latitude,
-                longitude: event.longitude,
-                accuracy: null,
-                timestamp: event.updated_at,
-            }]);
-
-            // Pan map to keep responder in view
-            if (map) {
-                map.panTo({ lat: event.latitude, lng: event.longitude });
-            }
-        });
-
-        return () => {
-            channel.stopListening('ResponderLocationUpdated');
-        };
-    }, [isOpen, dispatch.responder_id, map]);
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
