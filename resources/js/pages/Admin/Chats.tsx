@@ -55,7 +55,15 @@ interface IncidentInfo {
     user: User;
 }
 
-export default function Chats() {
+interface ChatsProps {
+    user: {
+        id: number;
+        name: string;
+        email: string;
+    };
+}
+
+export default function Chats({ user }: ChatsProps) {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);

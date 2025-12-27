@@ -16,9 +16,15 @@ class AdminMessageController extends Controller
     /**
      * Display the chat interface.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return Inertia::render('Admin/Chats');
+        return Inertia::render('Admin/Chats', [
+            'user' => [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+            ],
+        ]);
     }
 
     /**
