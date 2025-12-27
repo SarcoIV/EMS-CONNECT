@@ -166,21 +166,19 @@ export function IncomingCallNotification() {
             setIsJoining(true);
             setActiveCall(call);
 
-            // Call backend to mark as answered and get token
+            // Call backend to mark as answered
             const response = await axios.post('/admin/calls/answer', {
                 call_id: call.id,
             });
 
             console.log('[CALLS] ✅ Call answered successfully:', response.data);
 
-            const { agora_token } = response.data;
-
-            // Join Agora channel with token
+            // Join Agora channel
             if (agoraClient.current) {
                 await agoraClient.current.join(
                     AGORA_APP_ID,
                     call.channel_name,
-                    agora_token, // Use token from backend
+                    null, // token (null for App ID only mode)
                     null  // uid (null for auto-assign)
                 );
 
