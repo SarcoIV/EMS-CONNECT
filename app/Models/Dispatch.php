@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
 
 class Dispatch extends Model
 {
@@ -103,6 +103,7 @@ class Dispatch extends Model
     {
         $this->status = 'accepted';
         $this->accepted_at = now();
+
         return $this->save();
     }
 
@@ -113,6 +114,7 @@ class Dispatch extends Model
     {
         $this->status = 'en_route';
         $this->en_route_at = now();
+
         return $this->save();
     }
 
@@ -123,6 +125,7 @@ class Dispatch extends Model
     {
         $this->status = 'arrived';
         $this->arrived_at = now();
+
         return $this->save();
     }
 
@@ -133,6 +136,7 @@ class Dispatch extends Model
     {
         $this->status = 'completed';
         $this->completed_at = now();
+
         return $this->save();
     }
 
@@ -144,6 +148,7 @@ class Dispatch extends Model
         $this->status = 'cancelled';
         $this->cancelled_at = now();
         $this->cancellation_reason = $reason;
+
         return $this->save();
     }
 
@@ -152,15 +157,15 @@ class Dispatch extends Model
      */
     public function getFormattedDistanceAttribute(): string
     {
-        if (!$this->distance_meters) {
+        if (! $this->distance_meters) {
             return 'N/A';
         }
 
         if ($this->distance_meters < 1000) {
-            return number_format($this->distance_meters, 0) . ' m';
+            return number_format($this->distance_meters, 0).' m';
         }
 
-        return number_format($this->distance_meters / 1000, 2) . ' km';
+        return number_format($this->distance_meters / 1000, 2).' km';
     }
 
     /**
@@ -168,7 +173,7 @@ class Dispatch extends Model
      */
     public function getFormattedDurationAttribute(): string
     {
-        if (!$this->estimated_duration_seconds) {
+        if (! $this->estimated_duration_seconds) {
             return 'N/A';
         }
 
@@ -176,10 +181,10 @@ class Dispatch extends Model
         $seconds = $this->estimated_duration_seconds % 60;
 
         if ($minutes < 1) {
-            return number_format($seconds, 0) . ' sec';
+            return number_format($seconds, 0).' sec';
         }
 
-        return number_format($minutes, 0) . ' min';
+        return number_format($minutes, 0).' min';
     }
 
     /**

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Incident;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class IncidentReportsController extends Controller
@@ -97,7 +96,7 @@ class IncidentReportsController extends Controller
             ->values();
 
         // Get trend data (last 7 days)
-        $trendData = Incident::selectRaw("DATE(created_at) as date, COUNT(*) as count")
+        $trendData = Incident::selectRaw('DATE(created_at) as date, COUNT(*) as count')
             ->where('created_at', '>=', now()->subDays(7))
             ->groupBy('date')
             ->orderBy('date')
@@ -110,7 +109,7 @@ class IncidentReportsController extends Controller
             });
 
         // Get type distribution
-        $typeDistribution = Incident::selectRaw("type, COUNT(*) as count")
+        $typeDistribution = Incident::selectRaw('type, COUNT(*) as count')
             ->groupBy('type')
             ->get()
             ->map(function ($item) {
@@ -122,6 +121,7 @@ class IncidentReportsController extends Controller
                     'natural_disaster' => '#3b82f6',
                     'other' => '#6b7280',
                 ];
+
                 return [
                     'type' => $item->type ?? 'unknown',
                     'count' => $item->count,
@@ -156,7 +156,7 @@ class IncidentReportsController extends Controller
     {
         $user = $request->user();
 
-        if (!$user || !$user->isAdmin()) {
+        if (! $user || ! $user->isAdmin()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -166,12 +166,12 @@ class IncidentReportsController extends Controller
 
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="incidents_' . date('Y-m-d') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="incidents_'.date('Y-m-d').'.csv"',
         ];
 
         $callback = function () use ($incidents) {
             $file = fopen('php://output', 'w');
-            
+
             // Header row
             fputcsv($file, [
                 'ID',
@@ -214,4 +214,3 @@ class IncidentReportsController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 }
-

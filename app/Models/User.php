@@ -4,8 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -13,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -150,6 +150,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get messages sent by this user
+     */
+    public function sentMessages(): HasMany
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    /**
      * Get all dispatch assignments for this responder
      */
     public function dispatches(): HasMany
@@ -173,17 +181,17 @@ class User extends Authenticatable
     public function assignedIncidentsAsResponder(): BelongsToMany
     {
         return $this->belongsToMany(Incident::class, 'dispatches', 'responder_id', 'incident_id')
-                    ->withPivot([
-                        'status',
-                        'distance_meters',
-                        'estimated_duration_seconds',
-                        'assigned_at',
-                        'accepted_at',
-                        'en_route_at',
-                        'arrived_at',
-                        'completed_at',
-                    ])
-                    ->withTimestamps();
+            ->withPivot([
+                'status',
+                'distance_meters',
+                'estimated_duration_seconds',
+                'assigned_at',
+                'accepted_at',
+                'en_route_at',
+                'arrived_at',
+                'completed_at',
+            ])
+            ->withTimestamps();
     }
 
     /**
@@ -202,7 +210,7 @@ class User extends Authenticatable
      */
     public function hasLocation(): bool
     {
-        return !is_null($this->current_latitude) && !is_null($this->current_longitude);
+        return ! is_null($this->current_latitude) && ! is_null($this->current_longitude);
     }
 
     /**
@@ -210,7 +218,7 @@ class User extends Authenticatable
      */
     public function getLocationAttribute(): ?array
     {
-        if (!$this->hasLocation()) {
+        if (! $this->hasLocation()) {
             return null;
         }
 

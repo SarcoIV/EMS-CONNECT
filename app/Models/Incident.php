@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Incident extends Model
 {
@@ -84,18 +84,26 @@ class Incident extends Model
     public function assignedResponders(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'dispatches', 'incident_id', 'responder_id')
-                    ->withPivot([
-                        'status',
-                        'distance_meters',
-                        'estimated_duration_seconds',
-                        'assigned_at',
-                        'accepted_at',
-                        'en_route_at',
-                        'arrived_at',
-                        'completed_at',
-                        'cancelled_at',
-                    ])
-                    ->withTimestamps();
+            ->withPivot([
+                'status',
+                'distance_meters',
+                'estimated_duration_seconds',
+                'assigned_at',
+                'accepted_at',
+                'en_route_at',
+                'arrived_at',
+                'completed_at',
+                'cancelled_at',
+            ])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get all messages for this incident.
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(Message::class);
     }
 
     /**
@@ -155,7 +163,7 @@ class Incident extends Model
      */
     public function canAssignMoreResponders(): bool
     {
-        return !in_array($this->status, ['completed', 'cancelled']);
+        return ! in_array($this->status, ['completed', 'cancelled']);
     }
 
     /**
@@ -164,7 +172,7 @@ class Incident extends Model
     public function hasActiveDispatches(): bool
     {
         return $this->dispatches()
-                    ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
-                    ->exists();
+            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+            ->exists();
     }
 }

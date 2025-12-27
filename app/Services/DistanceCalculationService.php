@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Models\Incident;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -26,6 +26,7 @@ class DistanceCalculationService
 {
     // Cache configuration
     private const CACHE_TTL_SECONDS = 900; // 15 minutes
+
     private const CACHE_PREFIX = 'distance';
 
     // Earth radius in meters (for Haversine calculation)
@@ -33,24 +34,26 @@ class DistanceCalculationService
 
     // API configuration
     private string $apiKey;
+
     private string $baseUrl;
+
     private GoogleMapsService $googleMapsService;
 
     public function __construct()
     {
         $this->apiKey = config('services.openrouteservice.api_key');
         $this->baseUrl = config('services.openrouteservice.base_url');
-        $this->googleMapsService = new GoogleMapsService();
+        $this->googleMapsService = new GoogleMapsService;
     }
 
     /**
      * Calculate straight-line distance using Haversine formula.
      * Used as fallback when API fails or for preliminary filtering.
      *
-     * @param float $lat1 Origin latitude
-     * @param float $lon1 Origin longitude
-     * @param float $lat2 Destination latitude
-     * @param float $lon2 Destination longitude
+     * @param  float  $lat1  Origin latitude
+     * @param  float  $lon1  Origin longitude
+     * @param  float  $lat2  Destination latitude
+     * @param  float  $lon2  Destination longitude
      * @return float Distance in meters
      */
     public static function calculateHaversineDistance(
@@ -82,10 +85,10 @@ class DistanceCalculationService
      * Calculate road distance and travel time using routing APIs.
      * Primary: Google Maps API, Fallback: OpenRouteService, Final: Haversine formula
      *
-     * @param float $originLat Origin latitude
-     * @param float $originLon Origin longitude
-     * @param float $destLat Destination latitude
-     * @param float $destLon Destination longitude
+     * @param  float  $originLat  Origin latitude
+     * @param  float  $originLon  Origin longitude
+     * @param  float  $destLat  Destination latitude
+     * @param  float  $destLon  Destination longitude
      * @return array ['distance_meters' => float, 'duration_seconds' => float, 'distance_text' => string, 'duration_text' => string, 'route_coordinates' => array, 'encoded_polyline' => string, 'method' => string]
      */
     public function calculateRoadDistance(
@@ -100,6 +103,7 @@ class DistanceCalculationService
         $cachedResult = Cache::get($cacheKey);
         if ($cachedResult) {
             Log::debug('[DISTANCE] Using cached distance calculation', ['cache_key' => $cacheKey]);
+
             return $cachedResult;
         }
 
@@ -144,8 +148,8 @@ class DistanceCalculationService
     /**
      * Calculate distances for multiple responders to a single incident.
      *
-     * @param Incident $incident The incident
-     * @param Collection $responders Collection of User models (responders)
+     * @param  Incident  $incident  The incident
+     * @param  Collection  $responders  Collection of User models (responders)
      * @return Collection Responders with added distance data
      */
     public function calculateDistancesForResponders(
@@ -168,6 +172,7 @@ class DistanceCalculationService
                 $responder->distance_text = 'No location';
                 $responder->duration_seconds = null;
                 $responder->duration_text = 'N/A';
+
                 return $responder;
             }
 
@@ -196,9 +201,9 @@ class DistanceCalculationService
      * Get responders within a specific radius of coordinates.
      * Uses Haversine for initial filtering (fast).
      *
-     * @param float $lat Center latitude
-     * @param float $lon Center longitude
-     * @param int $radiusKm Radius in kilometers
+     * @param  float  $lat  Center latitude
+     * @param  float  $lon  Center longitude
+     * @param  int  $radiusKm  Radius in kilometers
      * @return Collection Responders within radius
      */
     public static function getRespondersWithinRadius(
@@ -259,7 +264,7 @@ class DistanceCalculationService
             'format' => 'geojson', // Request GeoJSON format for coordinates
         ]);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \Exception("OpenRouteService API error: {$response->status()} - {$response->body()}");
         }
 
@@ -272,7 +277,7 @@ class DistanceCalculationService
 
         // Extract distance and duration from response
         $route = $data['routes'][0] ?? null;
-        if (!$route) {
+        if (! $route) {
             throw new \Exception('No route found in OpenRouteService response');
         }
 
@@ -339,8 +344,8 @@ class DistanceCalculationService
         return [
             'distance_meters' => round($distanceMeters, 2),
             'duration_seconds' => round($durationSeconds, 2),
-            'distance_text' => $this->formatDistance($distanceMeters) . ' (est.)',
-            'duration_text' => $this->formatDuration($durationSeconds) . ' (est.)',
+            'distance_text' => $this->formatDistance($distanceMeters).' (est.)',
+            'duration_text' => $this->formatDuration($durationSeconds).' (est.)',
             'route_coordinates' => $routeCoordinates, // Only 2 points for straight line
             'encoded_polyline' => null,
             'method' => 'haversine',
@@ -375,10 +380,10 @@ class DistanceCalculationService
     private function formatDistance(float $meters): string
     {
         if ($meters < 1000) {
-            return number_format($meters, 0) . ' m';
+            return number_format($meters, 0).' m';
         }
 
-        return number_format($meters / 1000, 2) . ' km';
+        return number_format($meters / 1000, 2).' km';
     }
 
     /**
@@ -387,18 +392,18 @@ class DistanceCalculationService
     private function formatDuration(float $seconds): string
     {
         if ($seconds < 60) {
-            return number_format($seconds, 0) . ' sec';
+            return number_format($seconds, 0).' sec';
         }
 
         $minutes = floor($seconds / 60);
 
         if ($minutes < 60) {
-            return number_format($minutes, 0) . ' min';
+            return number_format($minutes, 0).' min';
         }
 
         $hours = floor($minutes / 60);
         $remainingMinutes = $minutes % 60;
 
-        return number_format($hours, 0) . ' hr ' . number_format($remainingMinutes, 0) . ' min';
+        return number_format($hours, 0).' hr '.number_format($remainingMinutes, 0).' min';
     }
 }

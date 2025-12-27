@@ -4,11 +4,11 @@ use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
-use Illuminate\Console\Scheduling\Schedule;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -37,6 +37,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // Mark responders as offline if inactive for 5+ minutes
         $schedule->command('responders:mark-inactive-offline')
             ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Delete messages older than 30 days (daily at 2 AM)
+        $schedule->command('messages:delete-old')
+            ->dailyAt('02:00')
             ->withoutOverlapping()
             ->runInBackground();
     })

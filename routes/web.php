@@ -1,17 +1,14 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\HomeController;
 use App\Http\Middleware\GuestMiddleware;
-
-
 /*
 |--------------------------------------------------------------------------
 | This controller handles the homepage and other public-facing pages that don't require authentication
 |--------------------------------------------------------------------------
 */
 
-use App\Http\Controllers\HomeController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -46,7 +43,6 @@ Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleC
 
 use App\Http\Controllers\Auth\RegisterController;
 
-
 Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMiddleware::class)->name('auth.register');
 
 /*
@@ -71,62 +67,62 @@ use App\Http\Middleware\AdminMiddleware;
 
 Route::middleware([AdminMiddleware::class])->group(function () {
 
-  // Dashboard
-  Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
-  Route::get('admin/dashboard/stats', [DashboardController::class, 'stats'])->name('admin.dashboard.stats');
-  Route::patch('admin/incidents/{id}/status', [DashboardController::class, 'updateIncidentStatus'])->name('admin.incidents.updateStatus');
-  Route::patch('admin/incidents/{id}/dispatch', [DashboardController::class, 'dispatch'])->name('admin.incidents.dispatch');
+    // Dashboard
+    Route::get('admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('admin/dashboard/stats', [DashboardController::class, 'stats'])->name('admin.dashboard.stats');
+    Route::patch('admin/incidents/{id}/status', [DashboardController::class, 'updateIncidentStatus'])->name('admin.incidents.updateStatus');
+    Route::patch('admin/incidents/{id}/dispatch', [DashboardController::class, 'dispatch'])->name('admin.incidents.dispatch');
 
-  // Dispatch (Admin-controlled responder assignment)
-  Route::get('admin/dispatch/{id}', [DispatchController::class, 'show'])->name('admin.dispatch.show');
-  Route::get('admin/incidents/{id}/available-responders', [DispatchController::class, 'getAvailableResponders'])->name('admin.incidents.availableResponders');
-  Route::post('admin/dispatch/assign', [DispatchController::class, 'assignResponder'])->name('admin.dispatch.assign');
-  Route::post('admin/dispatch/{id}/cancel', [DispatchController::class, 'cancelDispatch'])->name('admin.dispatch.cancel');
+    // Dispatch (Admin-controlled responder assignment)
+    Route::get('admin/dispatch/{id}', [DispatchController::class, 'show'])->name('admin.dispatch.show');
+    Route::get('admin/incidents/{id}/available-responders', [DispatchController::class, 'getAvailableResponders'])->name('admin.incidents.availableResponders');
+    Route::post('admin/dispatch/assign', [DispatchController::class, 'assignResponder'])->name('admin.dispatch.assign');
+    Route::post('admin/dispatch/{id}/cancel', [DispatchController::class, 'cancelDispatch'])->name('admin.dispatch.cancel');
 
-  // Live Map
-  Route::get('admin/live-map', [LiveMapController::class, 'index'])->name('admin.live-map');
-  Route::get('admin/live-map/data', [LiveMapController::class, 'data'])->name('admin.live-map.data');
-  Route::get('admin/dispatches/{id}/route-history', [LiveMapController::class, 'getRouteHistory'])->name('admin.dispatch.route-history');
+    // Live Map
+    Route::get('admin/live-map', [LiveMapController::class, 'index'])->name('admin.live-map');
+    Route::get('admin/live-map/data', [LiveMapController::class, 'data'])->name('admin.live-map.data');
+    Route::get('admin/dispatches/{id}/route-history', [LiveMapController::class, 'getRouteHistory'])->name('admin.dispatch.route-history');
 
-  // Incident Reports
-  Route::get('admin/incident-reports', [IncidentReportsController::class, 'index'])->name('admin.incident-reports');
-  Route::get('admin/incident-reports/export', [IncidentReportsController::class, 'export'])->name('admin.incident-reports.export');
+    // Incident Reports
+    Route::get('admin/incident-reports', [IncidentReportsController::class, 'index'])->name('admin.incident-reports');
+    Route::get('admin/incident-reports/export', [IncidentReportsController::class, 'export'])->name('admin.incident-reports.export');
 
-  // Administration
-  Route::get('admin/administration', [AdministrationController::class, 'index'])->name('admin.administration');
+    // Administration
+    Route::get('admin/administration', [AdministrationController::class, 'index'])->name('admin.administration');
 
-  // People
-  Route::get('admin/people', [PeopleController::class, 'index'])->name('admin.people');
-  Route::get('admin/people/{id}', [PeopleController::class, 'show'])->name('admin.people.show');
-  Route::patch('admin/people/{id}/toggle-status', [PeopleController::class, 'toggleStatus'])->name('admin.people.toggleStatus');
-  Route::post('admin/people/admin', [PeopleController::class, 'createAdmin'])->name('admin.people.createAdmin');
-  Route::delete('admin/people/admin/{id}', [PeopleController::class, 'deleteAdmin'])->name('admin.people.deleteAdmin');
-  Route::post('admin/people/responder', [PeopleController::class, 'createResponder'])->name('admin.people.createResponder');
-  Route::patch('admin/people/responder/{id}/toggle-status', [PeopleController::class, 'toggleResponderStatus'])->name('admin.people.toggleResponderStatus');
+    // People
+    Route::get('admin/people', [PeopleController::class, 'index'])->name('admin.people');
+    Route::get('admin/people/{id}', [PeopleController::class, 'show'])->name('admin.people.show');
+    Route::patch('admin/people/{id}/toggle-status', [PeopleController::class, 'toggleStatus'])->name('admin.people.toggleStatus');
+    Route::post('admin/people/admin', [PeopleController::class, 'createAdmin'])->name('admin.people.createAdmin');
+    Route::delete('admin/people/admin/{id}', [PeopleController::class, 'deleteAdmin'])->name('admin.people.deleteAdmin');
+    Route::post('admin/people/responder', [PeopleController::class, 'createResponder'])->name('admin.people.createResponder');
+    Route::patch('admin/people/responder/{id}/toggle-status', [PeopleController::class, 'toggleResponderStatus'])->name('admin.people.toggleResponderStatus');
 
-  // Settings
-  Route::get('admin/settings', [SettingsController::class, 'index'])->name('admin.settings');
-  Route::put('admin/settings/profile', [SettingsController::class, 'updateProfile'])->name('admin.settings.updateProfile');
-  Route::put('admin/settings/password', [SettingsController::class, 'updatePassword'])->name('admin.settings.updatePassword');
+    // Settings
+    Route::get('admin/settings', [SettingsController::class, 'index'])->name('admin.settings');
+    Route::put('admin/settings/profile', [SettingsController::class, 'updateProfile'])->name('admin.settings.updateProfile');
+    Route::put('admin/settings/password', [SettingsController::class, 'updatePassword'])->name('admin.settings.updatePassword');
 
-  // User Edit
-  Route::get('admin/user-edit', [UserEditController::class, 'index'])->name('admin.user-edit');
+    // User Edit
+    Route::get('admin/user-edit', [UserEditController::class, 'index'])->name('admin.user-edit');
 
-  // Chats
-  Route::get('admin/chats', [ChatsController::class, 'index'])->name('admin.chats');
+    // Chats
+    Route::get('admin/chats', [ChatsController::class, 'index'])->name('admin.chats');
 
-  // Hospital Directory
-  Route::get('admin/hospital-directory', [HospitalDirectoryController::class, 'index'])->name('admin.hospital-directory');
+    // Hospital Directory
+    Route::get('admin/hospital-directory', [HospitalDirectoryController::class, 'index'])->name('admin.hospital-directory');
 
-  // Archive
-  Route::get('admin/archive', [ArchiveController::class, 'index'])->name('admin.archive');
+    // Archive
+    Route::get('admin/archive', [ArchiveController::class, 'index'])->name('admin.archive');
 
-  // Calls (Voice Calling with Agora)
-  Route::prefix('admin/calls')->group(function () {
-    Route::get('incoming', [CallsController::class, 'incoming'])->name('admin.calls.incoming');
-    Route::post('answer', [CallsController::class, 'answer'])->name('admin.calls.answer');
-    Route::post('end', [CallsController::class, 'end'])->name('admin.calls.end');
-  });
+    // Calls (Voice Calling with Agora)
+    Route::prefix('admin/calls')->group(function () {
+        Route::get('incoming', [CallsController::class, 'incoming'])->name('admin.calls.incoming');
+        Route::post('answer', [CallsController::class, 'answer'])->name('admin.calls.answer');
+        Route::post('end', [CallsController::class, 'end'])->name('admin.calls.end');
+    });
 });
 
 /*
@@ -141,11 +137,11 @@ use App\Http\Middleware\UserMiddleware;
 
 Route::middleware([UserMiddleware::class])->group(function () {
 
-  // Dashboard
-  Route::get('dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
+    // Dashboard
+    Route::get('dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
 
-  // Settings
-  Route::get('user/settings', [UserSettingsController::class, 'index'])->name('user.settings');
-  Route::put('user/settings/profile', [UserSettingsController::class, 'updateProfile'])->name('user.settings.updateProfile');
-  Route::put('user/settings/password', [UserSettingsController::class, 'updatePassword'])->name('user.settings.updatePassword');
+    // Settings
+    Route::get('user/settings', [UserSettingsController::class, 'index'])->name('user.settings');
+    Route::put('user/settings/profile', [UserSettingsController::class, 'updateProfile'])->name('user.settings.updateProfile');
+    Route::put('user/settings/password', [UserSettingsController::class, 'updatePassword'])->name('user.settings.updatePassword');
 });

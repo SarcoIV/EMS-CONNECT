@@ -30,7 +30,7 @@ class DispatchService
     /**
      * Get available responders for an incident with calculated distances.
      *
-     * @param Incident $incident The incident
+     * @param  Incident  $incident  The incident
      * @return Collection Collection of responders with distance data
      */
     public function getAvailableResponders(Incident $incident): Collection
@@ -43,11 +43,11 @@ class DispatchService
             ->where(function ($query) {
                 // Must have either current location or base location
                 $query->whereNotNull('current_latitude')
-                      ->whereNotNull('current_longitude')
-                      ->orWhere(function ($q) {
-                          $q->whereNotNull('base_latitude')
+                    ->whereNotNull('current_longitude')
+                    ->orWhere(function ($q) {
+                        $q->whereNotNull('base_latitude')
                             ->whereNotNull('base_longitude');
-                      });
+                    });
             })
             ->get();
 
@@ -71,10 +71,11 @@ class DispatchService
     /**
      * Assign a responder to an incident.
      *
-     * @param Incident $incident The incident
-     * @param User $responder The responder to assign
-     * @param User $admin The admin making the assignment
+     * @param  Incident  $incident  The incident
+     * @param  User  $responder  The responder to assign
+     * @param  User  $admin  The admin making the assignment
      * @return Dispatch The created dispatch record
+     *
      * @throws \Exception If assignment fails validation
      */
     public function assignResponder(
@@ -83,17 +84,17 @@ class DispatchService
         User $admin
     ): Dispatch {
         // Validate incident can receive more responders
-        if (!$incident->canAssignMoreResponders()) {
+        if (! $incident->canAssignMoreResponders()) {
             throw new \Exception('Incident is already completed or cancelled');
         }
 
         // Validate responder is available
-        if (!$responder->isAvailableForDispatch()) {
+        if (! $responder->isAvailableForDispatch()) {
             throw new \Exception('Responder is not available for dispatch');
         }
 
         // Validate responder has location
-        if (!$responder->hasLocation() && is_null($responder->base_latitude)) {
+        if (! $responder->hasLocation() && is_null($responder->base_latitude)) {
             throw new \Exception('Responder does not have location data');
         }
 
@@ -178,10 +179,11 @@ class DispatchService
     /**
      * Update dispatch status (called by responder via mobile app).
      *
-     * @param Dispatch $dispatch The dispatch to update
-     * @param string $newStatus The new status
-     * @param string|null $reason Reason for status change (for cancellations)
+     * @param  Dispatch  $dispatch  The dispatch to update
+     * @param  string  $newStatus  The new status
+     * @param  string|null  $reason  Reason for status change (for cancellations)
      * @return Dispatch Updated dispatch
+     *
      * @throws \Exception If status transition is invalid
      */
     public function updateDispatchStatus(
@@ -191,7 +193,7 @@ class DispatchService
     ): Dispatch {
         $allowedStatuses = ['accepted', 'en_route', 'arrived', 'completed', 'cancelled'];
 
-        if (!in_array($newStatus, $allowedStatuses)) {
+        if (! in_array($newStatus, $allowedStatuses)) {
             throw new \Exception("Invalid dispatch status: {$newStatus}");
         }
 
@@ -279,7 +281,7 @@ class DispatchService
      * Send notification to responder about new assignment.
      * Placeholder for future push notification implementation.
      *
-     * @param Dispatch $dispatch The dispatch
+     * @param  Dispatch  $dispatch  The dispatch
      */
     public function notifyResponder(Dispatch $dispatch): void
     {

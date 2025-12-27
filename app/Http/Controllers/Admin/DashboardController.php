@@ -57,7 +57,7 @@ class DashboardController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -129,9 +129,9 @@ class DashboardController extends Controller
             'user:id,name,email,phone_number',
             'dispatches' => function ($query) {
                 $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
-                      ->orderBy('assigned_at', 'desc');
+                    ->orderBy('assigned_at', 'desc');
             },
-            'dispatches.responder:id,name,current_latitude,current_longitude,responder_status,location_updated_at'
+            'dispatches.responder:id,name,current_latitude,current_longitude,responder_status,location_updated_at',
         ])
             ->orderBy('created_at', 'desc')
             ->limit($limit)
@@ -240,6 +240,7 @@ class DashboardController extends Controller
 
         return $types->map(function ($type) use ($total, $colors) {
             $percentage = round(($type->count / $total) * 100, 1);
+
             return [
                 'name' => ucfirst(str_replace('_', ' ', $type->type)),
                 'value' => $percentage,
@@ -286,7 +287,7 @@ class DashboardController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -296,12 +297,12 @@ class DashboardController extends Controller
             $incident->status = $validated['status'];
 
             // Set timestamps based on status
-            if ($validated['status'] === 'dispatched' && !$incident->dispatched_at) {
+            if ($validated['status'] === 'dispatched' && ! $incident->dispatched_at) {
                 $incident->dispatched_at = now();
                 $incident->assigned_admin_id = $user->id;
             }
 
-            if ($validated['status'] === 'completed' && !$incident->completed_at) {
+            if ($validated['status'] === 'completed' && ! $incident->completed_at) {
                 $incident->completed_at = now();
             }
 
@@ -336,7 +337,7 @@ class DashboardController extends Controller
 
     /**
      * Dispatch an incident (pending → dispatched).
-     * 
+     *
      * This is the admin workflow step: verify incident → dispatch.
      */
     public function dispatch(Request $request, $id)
@@ -344,7 +345,7 @@ class DashboardController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -355,8 +356,8 @@ class DashboardController extends Controller
                 return response()->json([
                     'message' => 'Only pending incidents can be dispatched.',
                     'errors' => [
-                        'status' => ['This incident has already been processed. Current status: ' . $incident->status]
-                    ]
+                        'status' => ['This incident has already been processed. Current status: '.$incident->status],
+                    ],
                 ], 422);
             }
 

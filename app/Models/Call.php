@@ -91,6 +91,7 @@ class Call extends Model
     public static function generateChannelName(int $userId): string
     {
         $timestamp = time();
+
         return "emergency_call_{$userId}_{$timestamp}";
     }
 }

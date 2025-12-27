@@ -23,11 +23,11 @@ return new class extends Migration
         Schema::table('incidents', function (Blueprint $table) {
             // Dispatch counters for quick status overview
             $table->integer('responders_assigned')->default(0)->after('status')
-                  ->comment('Number of responders currently assigned to this incident');
+                ->comment('Number of responders currently assigned to this incident');
             $table->integer('responders_en_route')->default(0)->after('responders_assigned')
-                  ->comment('Number of responders currently en route');
+                ->comment('Number of responders currently en route');
             $table->integer('responders_arrived')->default(0)->after('responders_en_route')
-                  ->comment('Number of responders who have arrived at scene');
+                ->comment('Number of responders who have arrived at scene');
 
             // Composite index for efficient filtering (e.g., "show incidents with assigned responders")
             $table->index(['status', 'responders_assigned'], 'incidents_status_assigned_index');

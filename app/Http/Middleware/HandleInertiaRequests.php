@@ -47,20 +47,20 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'quote' => [
                 'message' => trim($message),
-                'author'  => trim($author),
+                'author' => trim($author),
             ],
             'auth' => [
                 'user' => $request->user(),
             ],
-            'ziggy' => fn(): array => [
+            'ziggy' => fn (): array => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
             ],
             // Share flash messages from the session
             'flash' => [
                 'success' => $request->session()->get('success'),
-                'error'   => $request->session()->get('error'),
-                'info'    => $request->session()->get('info'),
+                'error' => $request->session()->get('error'),
+                'info' => $request->session()->get('info'),
             ],
         ];
     }

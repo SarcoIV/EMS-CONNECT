@@ -1,10 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\IncidentController;
 use App\Http\Controllers\Api\CallController;
+use App\Http\Controllers\Api\IncidentController;
+use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ResponderController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,7 +39,7 @@ Route::middleware(['throttle:10,1'])->group(function () {
 // =============================================================================
 
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     // -------------------------------------------------------------------------
     // Auth Routes
     // -------------------------------------------------------------------------
@@ -75,14 +76,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('incidents')->group(function () {
         // Create new incident
         Route::post('/', [IncidentController::class, 'store']);
-        
+
         // Get all incidents for authenticated user
         Route::get('/my', [IncidentController::class, 'myIncidents']);
-        
+
         // Get specific incident
         Route::get('/{id}', [IncidentController::class, 'show'])
             ->where('id', '[0-9]+');
-        
+
         // Cancel incident
         Route::post('/{id}/cancel', [IncidentController::class, 'cancel'])
             ->where('id', '[0-9]+');
@@ -133,6 +134,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Admin: Answer a call
         Route::post('/answer', [CallController::class, 'answer']);
+    });
+
+    // -------------------------------------------------------------------------
+    // Message Routes (Incident-based messaging)
+    // -------------------------------------------------------------------------
+    Route::prefix('messages')->group(function () {
+        // Send a message
+        Route::post('/', [MessageController::class, 'store']);
+
+        // Get messages for an incident
+        Route::get('/', [MessageController::class, 'index']);
+
+        // Get unread message count
+        Route::get('/unread-count', [MessageController::class, 'unreadCount']);
+
+        // Mark a message as read
+        Route::post('/{id}/mark-read', [MessageController::class, 'markAsRead'])
+            ->where('id', '[0-9]+');
     });
 
     // -------------------------------------------------------------------------

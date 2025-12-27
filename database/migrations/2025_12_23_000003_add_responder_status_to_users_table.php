@@ -28,17 +28,17 @@ return new class extends Migration
                 'idle',      // On duty and available
                 'assigned',  // Assigned to incident
                 'en_route',  // Traveling to incident
-                'busy'       // Handling incident
+                'busy',       // Handling incident
             ])->default('offline')->after('role')
-              ->comment('Real-time availability status for responders');
+                ->comment('Real-time availability status for responders');
 
             // Duty tracking
             $table->boolean('is_on_duty')->default(false)->after('responder_status')
-                  ->comment('Whether responder is currently on duty');
+                ->comment('Whether responder is currently on duty');
             $table->timestamp('duty_started_at')->nullable()->after('is_on_duty')
-                  ->comment('When responder started current duty shift');
+                ->comment('When responder started current duty shift');
             $table->timestamp('duty_ended_at')->nullable()->after('duty_started_at')
-                  ->comment('When responder ended current duty shift');
+                ->comment('When responder ended current duty shift');
 
             // Indexes for efficient availability queries
             $table->index('responder_status');

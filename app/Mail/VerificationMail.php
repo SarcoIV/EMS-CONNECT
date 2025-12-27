@@ -11,6 +11,7 @@ class VerificationMail extends Mailable
     use Queueable, SerializesModels;
 
     public $code;
+
     public $name;
 
     /**
@@ -28,12 +29,10 @@ class VerificationMail extends Mailable
     public function build()
     {
         return $this->subject('EMS Connect - Email Verification Code')
-                    ->view('emails.verification')
-                    ->with([
-                        'code' => $this->code,
-                        'name' => $this->name,
-                    ]);
+            ->view('emails.verification')
+            ->with([
+                'code' => $this->code,
+                'name' => $this->name,
+            ]);
     }
 }
-
-

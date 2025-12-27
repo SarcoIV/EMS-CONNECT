@@ -57,7 +57,7 @@ class LiveMapController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -168,7 +168,7 @@ class LiveMapController extends Controller
     {
         $dispatches = Dispatch::with([
             'responder:id,name,email,phone_number,current_latitude,current_longitude,base_latitude,base_longitude,responder_status,location_updated_at',
-            'incident:id,type,status,latitude,longitude,address'
+            'incident:id,type,status,latitude,longitude,address',
         ])
             ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
             ->orderBy('assigned_at', 'desc')
@@ -256,7 +256,7 @@ class LiveMapController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -299,4 +299,3 @@ class LiveMapController extends Controller
         }
     }
 }
-

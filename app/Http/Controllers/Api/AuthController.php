@@ -3,23 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\VerificationMail;
 use App\Models\User;
 use App\Services\VerificationService;
-use App\Mail\VerificationMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     /**
      * Handle mobile app login
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function login(Request $request)
@@ -32,43 +30,43 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         // Verify credentials
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'The provided credentials are incorrect or you do not have access to the mobile app.',
                 'errors' => [
-                    'email' => ['The provided credentials are incorrect or you do not have access to the mobile app.']
-                ]
+                    'email' => ['The provided credentials are incorrect or you do not have access to the mobile app.'],
+                ],
             ], 422);
         }
 
         // Check if user has mobile role
-        if (!in_array($user->role, ['responder', 'community'])) {
+        if (! in_array($user->role, ['responder', 'community'])) {
             return response()->json([
                 'message' => 'The provided credentials are incorrect or you do not have access to the mobile app.',
                 'errors' => [
-                    'email' => ['The provided credentials are incorrect or you do not have access to the mobile app.']
-                ]
+                    'email' => ['The provided credentials are incorrect or you do not have access to the mobile app.'],
+                ],
             ], 422);
         }
 
         // Check if responder is active
-        if ($user->role === 'responder' && !$user->email_verified) {
+        if ($user->role === 'responder' && ! $user->email_verified) {
             return response()->json([
                 'message' => 'Your responder account is inactive. Please contact an administrator.',
                 'errors' => [
-                    'email' => ['Your responder account has been deactivated. Please contact an administrator to reactivate your account.']
-                ]
+                    'email' => ['Your responder account has been deactivated. Please contact an administrator to reactivate your account.'],
+                ],
             ], 422);
         }
 
         // Check if email is verified (for community users)
-        if ($user->role === 'community' && !$user->email_verified) {
+        if ($user->role === 'community' && ! $user->email_verified) {
             return response()->json([
                 'message' => 'Please verify your email address before logging in.',
                 'errors' => [
-                    'email' => ['Your email address has not been verified. Please check your email for the verification code.']
+                    'email' => ['Your email address has not been verified. Please check your email for the verification code.'],
                 ],
-                'requires_verification' => true
+                'requires_verification' => true,
             ], 422);
         }
 
@@ -93,7 +91,6 @@ class AuthController extends Controller
     /**
      * Register a new community/resident user
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function signup(Request $request)
@@ -111,7 +108,7 @@ class AuthController extends Controller
                 'confirmed',
                 Password::min(8)
                     ->mixedCase()
-                    ->numbers()
+                    ->numbers(),
             ],
         ], [
             'first_name.required' => 'The first name field is required.',
@@ -134,7 +131,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'The given data was invalid.',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -144,7 +141,7 @@ class AuthController extends Controller
 
             // Create the user (unverified)
             $user = User::create([
-                'name' => $request->first_name . ' ' . $request->last_name,
+                'name' => $request->first_name.' '.$request->last_name,
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'username' => $request->username,
@@ -165,22 +162,22 @@ class AuthController extends Controller
             try {
                 Mail::to($user->email)->send(new VerificationMail($verificationCode, $user->first_name));
             } catch (\Exception $mailException) {
-                Log::error('Failed to send verification email: ' . $mailException->getMessage());
+                Log::error('Failed to send verification email: '.$mailException->getMessage());
                 // Don't fail registration if email fails, but log it
             }
 
             return response()->json([
                 'message' => 'Registration successful. Please check your email for verification code.',
                 'email' => $user->email,
-                'requires_verification' => true
+                'requires_verification' => true,
             ], 201);
 
         } catch (\Exception $e) {
-            Log::error('Signup error: ' . $e->getMessage());
-            
+            Log::error('Signup error: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'An error occurred while creating your account. Please try again.',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -188,7 +185,6 @@ class AuthController extends Controller
     /**
      * Verify email with code
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function verifyEmail(Request $request)
@@ -207,24 +203,24 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'The given data was invalid.',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         try {
             $user = User::where('email', $request->email)->first();
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'message' => 'User not found.',
-                    'errors' => ['email' => ['No account found with this email address.']]
+                    'errors' => ['email' => ['No account found with this email address.']],
                 ], 404);
             }
 
             if ($user->email_verified) {
                 return response()->json([
                     'message' => 'Email is already verified.',
-                    'errors' => ['email' => ['This email has already been verified.']]
+                    'errors' => ['email' => ['This email has already been verified.']],
                 ], 422);
             }
 
@@ -232,15 +228,15 @@ class AuthController extends Controller
             if (VerificationService::isCodeExpired($request->email)) {
                 return response()->json([
                     'message' => 'Verification code has expired.',
-                    'errors' => ['code' => ['The verification code has expired. Please request a new one.']]
+                    'errors' => ['code' => ['The verification code has expired. Please request a new one.']],
                 ], 422);
             }
 
             // Verify code
-            if (!VerificationService::verifyCode($request->email, $request->code)) {
+            if (! VerificationService::verifyCode($request->email, $request->code)) {
                 return response()->json([
                     'message' => 'Invalid verification code.',
-                    'errors' => ['code' => ['The verification code is incorrect.']]
+                    'errors' => ['code' => ['The verification code is incorrect.']],
                 ], 422);
             }
 
@@ -270,15 +266,15 @@ class AuthController extends Controller
                     'role' => $user->role,
                 ],
                 'role' => $user->role,
-                'message' => 'Email verified successfully. Welcome to EMS Connect!'
+                'message' => 'Email verified successfully. Welcome to EMS Connect!',
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Email verification error: ' . $e->getMessage());
-            
+            Log::error('Email verification error: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'An error occurred during verification. Please try again.',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -286,7 +282,6 @@ class AuthController extends Controller
     /**
      * Resend verification code
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function resendVerificationCode(Request $request)
@@ -301,24 +296,24 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'The given data was invalid.',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         try {
             $user = User::where('email', $request->email)->first();
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'message' => 'User not found.',
-                    'errors' => ['email' => ['No account found with this email address.']]
+                    'errors' => ['email' => ['No account found with this email address.']],
                 ], 404);
             }
 
             if ($user->email_verified) {
                 return response()->json([
                     'message' => 'Email is already verified.',
-                    'errors' => ['email' => ['This email has already been verified.']]
+                    'errors' => ['email' => ['This email has already been verified.']],
                 ], 422);
             }
 
@@ -338,23 +333,23 @@ class AuthController extends Controller
             try {
                 Mail::to($user->email)->send(new VerificationMail($verificationCode, $user->first_name ?? $user->name));
             } catch (\Exception $mailException) {
-                Log::error('Failed to resend verification email: ' . $mailException->getMessage());
-                
+                Log::error('Failed to resend verification email: '.$mailException->getMessage());
+
                 return response()->json([
                     'message' => 'Failed to send verification email. Please try again later.',
                 ], 500);
             }
 
             return response()->json([
-                'message' => 'Verification code has been resent to your email.'
+                'message' => 'Verification code has been resent to your email.',
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Resend verification code error: ' . $e->getMessage());
-            
+            Log::error('Resend verification code error: '.$e->getMessage());
+
             return response()->json([
                 'message' => 'An error occurred. Please try again.',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -362,7 +357,6 @@ class AuthController extends Controller
     /**
      * Handle logout
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function logout(Request $request)
@@ -378,7 +372,6 @@ class AuthController extends Controller
     /**
      * Get authenticated user info
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function user(Request $request)

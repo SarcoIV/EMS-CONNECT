@@ -20,31 +20,31 @@ return new class extends Migration
 
             // Foreign keys
             $table->foreignId('responder_id')
-                  ->constrained('users')
-                  ->onDelete('cascade')
-                  ->comment('Responder whose location is being tracked');
+                ->constrained('users')
+                ->onDelete('cascade')
+                ->comment('Responder whose location is being tracked');
 
             $table->foreignId('dispatch_id')
-                  ->nullable()
-                  ->constrained('dispatches')
-                  ->onDelete('set null')
-                  ->comment('Associated dispatch (null if just general tracking)');
+                ->nullable()
+                ->constrained('dispatches')
+                ->onDelete('set null')
+                ->comment('Associated dispatch (null if just general tracking)');
 
             // Location data
             $table->decimal('latitude', 10, 8)
-                  ->comment('GPS latitude');
+                ->comment('GPS latitude');
 
             $table->decimal('longitude', 11, 8)
-                  ->comment('GPS longitude');
+                ->comment('GPS longitude');
 
             $table->decimal('accuracy', 10, 2)
-                  ->nullable()
-                  ->comment('GPS accuracy in meters');
+                ->nullable()
+                ->comment('GPS accuracy in meters');
 
             // Timestamp
             $table->timestamp('created_at')
-                  ->useCurrent()
-                  ->comment('When location was recorded');
+                ->useCurrent()
+                ->comment('When location was recorded');
 
             // Indexes for efficient queries
             $table->index(['responder_id', 'created_at'], 'idx_responder_time');

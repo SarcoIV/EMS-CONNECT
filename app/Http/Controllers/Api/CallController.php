@@ -14,7 +14,6 @@ class CallController extends Controller
     /**
      * Start a new emergency call.
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function start(Request $request)
@@ -28,7 +27,7 @@ class CallController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'The given data was invalid.',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -53,7 +52,7 @@ class CallController extends Controller
                     ],
                     'channel_name' => $activeCall->channel_name,
                     'agora_app_id' => config('services.agora.app_id'),
-                    'message' => 'You already have an active call.'
+                    'message' => 'You already have an active call.',
                 ], 200);
             }
 
@@ -63,10 +62,10 @@ class CallController extends Controller
                     ->where('user_id', $user->id)
                     ->first();
 
-                if (!$incident) {
+                if (! $incident) {
                     return response()->json([
                         'message' => 'Incident not found.',
-                        'errors' => ['incident_id' => ['The specified incident does not exist or you do not have access to it.']]
+                        'errors' => ['incident_id' => ['The specified incident does not exist or you do not have access to it.']],
                     ], 404);
                 }
             }
@@ -116,7 +115,7 @@ class CallController extends Controller
 
             return response()->json([
                 'message' => 'An error occurred while starting the call. Please try again.',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -124,7 +123,6 @@ class CallController extends Controller
     /**
      * End an active call.
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function end(Request $request)
@@ -139,7 +137,7 @@ class CallController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'The given data was invalid.',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -150,14 +148,14 @@ class CallController extends Controller
             $call = Call::where('id', $request->call_id)
                 ->where(function ($query) use ($user) {
                     $query->where('user_id', $user->id)
-                          ->orWhere('receiver_admin_id', $user->id);
+                        ->orWhere('receiver_admin_id', $user->id);
                 })
                 ->first();
 
-            if (!$call) {
+            if (! $call) {
                 return response()->json([
                     'message' => 'Call not found.',
-                    'errors' => ['call_id' => ['The specified call does not exist or you do not have access to it.']]
+                    'errors' => ['call_id' => ['The specified call does not exist or you do not have access to it.']],
                 ], 404);
             }
 
@@ -172,7 +170,7 @@ class CallController extends Controller
                         'status' => $call->status,
                         'started_at' => $call->started_at?->toIso8601String(),
                         'ended_at' => $call->ended_at?->toIso8601String(),
-                    ]
+                    ],
                 ], 200);
             }
 
@@ -196,15 +194,15 @@ class CallController extends Controller
                     'status' => $call->status,
                     'started_at' => $call->started_at?->toIso8601String(),
                     'ended_at' => $call->ended_at?->toIso8601String(),
-                ]
+                ],
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Failed to end call: ' . $e->getMessage());
+            Log::error('Failed to end call: '.$e->getMessage());
 
             return response()->json([
                 'message' => 'An error occurred while ending the call. Please try again.',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -212,7 +210,6 @@ class CallController extends Controller
     /**
      * Get active call for authenticated user.
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function active(Request $request)
@@ -225,10 +222,10 @@ class CallController extends Controller
                 ->orderBy('started_at', 'desc')
                 ->first();
 
-            if (!$call) {
+            if (! $call) {
                 return response()->json([
                     'has_active_call' => false,
-                    'call' => null
+                    'call' => null,
                 ], 200);
             }
 
@@ -248,11 +245,11 @@ class CallController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Failed to fetch active call: ' . $e->getMessage());
+            Log::error('Failed to fetch active call: '.$e->getMessage());
 
             return response()->json([
                 'message' => 'An error occurred while fetching active call.',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -260,7 +257,6 @@ class CallController extends Controller
     /**
      * Get incoming calls for admin (calls with status 'active' waiting for admin).
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function incoming(Request $request)
@@ -269,9 +265,9 @@ class CallController extends Controller
             $user = $request->user();
 
             // Only allow admin users to see incoming calls
-            if (!$user->isAdmin()) {
+            if (! $user->isAdmin()) {
                 return response()->json([
-                    'message' => 'Unauthorized. Admin access required.'
+                    'message' => 'Unauthorized. Admin access required.',
                 ], 403);
             }
 
@@ -310,11 +306,11 @@ class CallController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Failed to fetch incoming calls: ' . $e->getMessage());
+            Log::error('Failed to fetch incoming calls: '.$e->getMessage());
 
             return response()->json([
                 'message' => 'An error occurred while fetching incoming calls.',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
@@ -322,7 +318,6 @@ class CallController extends Controller
     /**
      * Answer an incoming call (admin only).
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function answer(Request $request)
@@ -337,7 +332,7 @@ class CallController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'The given data was invalid.',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -345,18 +340,18 @@ class CallController extends Controller
             $user = $request->user();
 
             // Only allow admin users to answer calls
-            if (!$user->isAdmin()) {
+            if (! $user->isAdmin()) {
                 return response()->json([
-                    'message' => 'Unauthorized. Admin access required.'
+                    'message' => 'Unauthorized. Admin access required.',
                 ], 403);
             }
 
             $call = Call::with('user:id,name,email,phone_number')
                 ->find($request->call_id);
 
-            if (!$call) {
+            if (! $call) {
                 return response()->json([
-                    'message' => 'Call not found.'
+                    'message' => 'Call not found.',
                 ], 404);
             }
 
@@ -364,7 +359,7 @@ class CallController extends Controller
                 return response()->json([
                     'message' => 'Call is not available to answer.',
                     'current_status' => $call->status,
-                    'is_answered' => $call->receiver_admin_id !== null
+                    'is_answered' => $call->receiver_admin_id !== null,
                 ], 400);
             }
 
@@ -396,24 +391,21 @@ class CallController extends Controller
                 ],
                 'channel_name' => $call->channel_name,
                 'agora_app_id' => config('services.agora.app_id'),
-                'message' => 'Call answered successfully.'
+                'message' => 'Call answered successfully.',
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Failed to answer call: ' . $e->getMessage());
+            Log::error('Failed to answer call: '.$e->getMessage());
 
             return response()->json([
                 'message' => 'An error occurred while answering the call.',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
 
     /**
      * Format call for API response.
-     *
-     * @param Call $call
-     * @return array
      */
     private function formatCall(Call $call): array
     {
@@ -428,4 +420,3 @@ class CallController extends Controller
         ];
     }
 }
-

@@ -15,8 +15,8 @@ class PolylineDecoder
     /**
      * Decode an encoded polyline string into array of coordinates.
      *
-     * @param string $encoded Encoded polyline string
-     * @param int $precision Precision (5 for Google Maps/OpenRouteService)
+     * @param  string  $encoded  Encoded polyline string
+     * @param  int  $precision  Precision (5 for Google Maps/OpenRouteService)
      * @return array Array of ['latitude' => float, 'longitude' => float]
      */
     public static function decode(string $encoded, int $precision = 5): array
@@ -43,7 +43,7 @@ class PolylineDecoder
                     break;
                 }
                 $b = ord($encoded[$index++]) - 63;
-                $result |= ($b & 0x1f) << $shift;
+                $result |= ($b & 0x1F) << $shift;
                 $shift += 5;
             } while ($b >= 0x20);
 
@@ -59,7 +59,7 @@ class PolylineDecoder
                     break;
                 }
                 $b = ord($encoded[$index++]) - 63;
-                $result |= ($b & 0x1f) << $shift;
+                $result |= ($b & 0x1F) << $shift;
                 $shift += 5;
             } while ($b >= 0x20);
 
@@ -79,8 +79,8 @@ class PolylineDecoder
     /**
      * Encode an array of coordinates into a polyline string.
      *
-     * @param array $coordinates Array of ['latitude' => float, 'longitude' => float]
-     * @param int $precision Precision (5 for Google Maps/OpenRouteService)
+     * @param  array  $coordinates  Array of ['latitude' => float, 'longitude' => float]
+     * @param  int  $precision  Precision (5 for Google Maps/OpenRouteService)
      * @return string Encoded polyline string
      */
     public static function encode(array $coordinates, int $precision = 5): string
@@ -113,7 +113,7 @@ class PolylineDecoder
     /**
      * Encode a single number for polyline encoding.
      *
-     * @param int $num Number to encode
+     * @param  int  $num  Number to encode
      * @return string Encoded string
      */
     private static function encodeNumber(int $num): string
@@ -122,7 +122,7 @@ class PolylineDecoder
         $num = $num < 0 ? ~($num << 1) : ($num << 1);
 
         while ($num >= 0x20) {
-            $encoded .= chr((0x20 | ($num & 0x1f)) + 63);
+            $encoded .= chr((0x20 | ($num & 0x1F)) + 63);
             $num >>= 5;
         }
 

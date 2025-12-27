@@ -3,15 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Laravel\Socialite\Facades\Socialite;
+use App\Mail\WelcomeEmail;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\WelcomeEmail;
-use Exception;
+use Laravel\Socialite\Facades\Socialite;
 
 class SocialAuthController extends Controller
 {
@@ -42,7 +41,7 @@ class SocialAuthController extends Controller
             $user = User::where('email', $googleUser->email)->first();
             $isNewUser = false;
 
-            if (!$user) {
+            if (! $user) {
                 // Check if the email is the admin email
                 $userRole = $googleUser->email === 'princesanguan44@gmail.com' ? 'admin' : 'user';
 
@@ -93,7 +92,7 @@ class SocialAuthController extends Controller
                     'user_id' => $user->id,
                     'email' => $user->email,
                     'error' => $emailException->getMessage(),
-                    'trace' => $emailException->getTraceAsString()
+                    'trace' => $emailException->getTraceAsString(),
                 ]);
 
                 // Store in session that email failed
@@ -112,7 +111,7 @@ class SocialAuthController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
             ]);
 
             // Redirect back with error

@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Google Maps Service
@@ -19,9 +19,11 @@ class GoogleMapsService
 {
     // Cache configuration
     private const CACHE_TTL_SECONDS = 900; // 15 minutes
+
     private const CACHE_PREFIX = 'google_maps_route';
 
     private ?string $apiKey;
+
     private ?string $baseUrl;
 
     public function __construct()
@@ -37,12 +39,13 @@ class GoogleMapsService
     /**
      * Get directions from origin to destination using Google Maps Directions API.
      *
-     * @param float $originLat Origin latitude
-     * @param float $originLon Origin longitude
-     * @param float $destLat Destination latitude
-     * @param float $destLon Destination longitude
-     * @param array $options Additional options (mode, avoid, etc.)
+     * @param  float  $originLat  Origin latitude
+     * @param  float  $originLon  Origin longitude
+     * @param  float  $destLat  Destination latitude
+     * @param  float  $destLon  Destination longitude
+     * @param  array  $options  Additional options (mode, avoid, etc.)
      * @return array Route data including polyline, distance, duration
+     *
      * @throws \Exception If API call fails
      */
     public function getDirections(
@@ -58,6 +61,7 @@ class GoogleMapsService
         $cachedResult = Cache::get($cacheKey);
         if ($cachedResult) {
             Log::debug('[GOOGLE_MAPS] Using cached route data', ['cache_key' => $cacheKey]);
+
             return $cachedResult;
         }
 
@@ -114,7 +118,7 @@ class GoogleMapsService
 
         $response = Http::timeout(10)->get($url, $params);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             throw new \Exception("Google Maps API error: {$response->status()} - {$response->body()}");
         }
 
@@ -168,7 +172,7 @@ class GoogleMapsService
      * Decode Google Maps encoded polyline to array of coordinates.
      * Algorithm: https://developers.google.com/maps/documentation/utilities/polylinealgorithm
      *
-     * @param string $encoded Encoded polyline string
+     * @param  string  $encoded  Encoded polyline string
      * @return array Array of [latitude, longitude] associative arrays
      */
     private function decodePolyline(string $encoded): array
@@ -186,7 +190,7 @@ class GoogleMapsService
 
             do {
                 $b = ord($encoded[$index++]) - 63;
-                $result |= ($b & 0x1f) << $shift;
+                $result |= ($b & 0x1F) << $shift;
                 $shift += 5;
             } while ($b >= 0x20);
 
@@ -198,7 +202,7 @@ class GoogleMapsService
 
             do {
                 $b = ord($encoded[$index++]) - 63;
-                $result |= ($b & 0x1f) << $shift;
+                $result |= ($b & 0x1F) << $shift;
                 $shift += 5;
             } while ($b >= 0x20);
 
@@ -242,10 +246,10 @@ class GoogleMapsService
     private function formatDistance(float $meters): string
     {
         if ($meters < 1000) {
-            return number_format($meters, 0) . ' m';
+            return number_format($meters, 0).' m';
         }
 
-        return number_format($meters / 1000, 2) . ' km';
+        return number_format($meters / 1000, 2).' km';
     }
 
     /**
@@ -254,18 +258,18 @@ class GoogleMapsService
     private function formatDuration(float $seconds): string
     {
         if ($seconds < 60) {
-            return number_format($seconds, 0) . ' sec';
+            return number_format($seconds, 0).' sec';
         }
 
         $minutes = floor($seconds / 60);
 
         if ($minutes < 60) {
-            return number_format($minutes, 0) . ' min';
+            return number_format($minutes, 0).' min';
         }
 
         $hours = floor($minutes / 60);
         $remainingMinutes = $minutes % 60;
 
-        return number_format($hours, 0) . ' hr ' . number_format($remainingMinutes, 0) . ' min';
+        return number_format($hours, 0).' hr '.number_format($remainingMinutes, 0).' min';
     }
 }

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class HospitalDirectoryController extends Controller
 {
@@ -20,6 +20,3 @@ class HospitalDirectoryController extends Controller
         ]);
     }
 }
-
-
-

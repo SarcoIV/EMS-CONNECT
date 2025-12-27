@@ -15,6 +15,7 @@ class PreArrivalFormSubmitted implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $dispatch;
+
     public $preArrival;
 
     /**
@@ -40,8 +41,6 @@ class PreArrivalFormSubmitted implements ShouldBroadcast
 
     /**
      * Get the data to broadcast.
-     *
-     * @return array
      */
     public function broadcastWith(): array
     {

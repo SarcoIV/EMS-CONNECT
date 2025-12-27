@@ -102,7 +102,7 @@ class PeopleController extends Controller
         try {
             $authUser = $request->user();
 
-            if (!$authUser || !$authUser->isAdmin()) {
+            if (! $authUser || ! $authUser->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -157,7 +157,7 @@ class PeopleController extends Controller
         try {
             $authUser = $request->user();
 
-            if (!$authUser || !$authUser->isAdmin()) {
+            if (! $authUser || ! $authUser->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -171,7 +171,7 @@ class PeopleController extends Controller
             }
 
             // Toggle email_verified as activation status
-            $user->email_verified = !$user->email_verified;
+            $user->email_verified = ! $user->email_verified;
             $user->save();
 
             Log::info('[PEOPLE] User status toggled', [
@@ -213,7 +213,7 @@ class PeopleController extends Controller
         try {
             $authUser = $request->user();
 
-            if (!$authUser || !$authUser->isAdmin()) {
+            if (! $authUser || ! $authUser->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -260,7 +260,7 @@ class PeopleController extends Controller
         try {
             $authUser = $request->user();
 
-            if (!$authUser || !$authUser->isAdmin()) {
+            if (! $authUser || ! $authUser->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -312,7 +312,7 @@ class PeopleController extends Controller
         try {
             $authUser = $request->user();
 
-            if (!$authUser || !$authUser->isAdmin()) {
+            if (! $authUser || ! $authUser->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -364,14 +364,14 @@ class PeopleController extends Controller
         try {
             $authUser = $request->user();
 
-            if (!$authUser || !$authUser->isAdmin()) {
+            if (! $authUser || ! $authUser->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
             $responder = User::where('role', 'responder')->findOrFail($id);
 
             // Toggle email_verified as activation status
-            $responder->email_verified = !$responder->email_verified;
+            $responder->email_verified = ! $responder->email_verified;
             $responder->save();
 
             Log::info('[PEOPLE] Responder status toggled', [

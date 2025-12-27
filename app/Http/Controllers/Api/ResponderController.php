@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\PreArrivalFormSubmitted;
+use App\Events\ResponderLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Dispatch;
 use App\Models\PreArrivalForm;
 use App\Services\DispatchService;
 use App\Services\DistanceCalculationService;
-use App\Events\ResponderLocationUpdated;
-use App\Events\PreArrivalFormSubmitted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Log;
 class ResponderController extends Controller
 {
     private DispatchService $dispatchService;
+
     private DistanceCalculationService $distanceService;
 
     public function __construct(
@@ -45,7 +46,7 @@ class ResponderController extends Controller
             $user = $request->user();
 
             // Validate user is a responder
-            if (!$user || !$user->isResponder()) {
+            if (! $user || ! $user->isResponder()) {
                 return response()->json([
                     'message' => 'Unauthorized. Only responders can update location.',
                 ], 403);
@@ -58,7 +59,7 @@ class ResponderController extends Controller
             ]);
 
             // Only update location if responder is on duty
-            if (!$user->is_on_duty) {
+            if (! $user->is_on_duty) {
                 return response()->json([
                     'message' => 'Location updates are only accepted when on duty',
                 ], 422);
@@ -156,7 +157,7 @@ class ResponderController extends Controller
             ]);
 
             // Validate user is a responder
-            if (!$user || !$user->isResponder()) {
+            if (! $user || ! $user->isResponder()) {
                 Log::warning('[RESPONDER] ⚠️ Unauthorized status update attempt', [
                     'user_id' => $user?->id,
                     'role' => $user?->role,
@@ -182,10 +183,10 @@ class ResponderController extends Controller
             $user->responder_status = $validated['responder_status'];
 
             // Track duty start/end times
-            if ($validated['is_on_duty'] && !$previousOnDuty) {
+            if ($validated['is_on_duty'] && ! $previousOnDuty) {
                 $user->duty_started_at = now();
                 $user->duty_ended_at = null;
-            } elseif (!$validated['is_on_duty'] && $previousOnDuty) {
+            } elseif (! $validated['is_on_duty'] && $previousOnDuty) {
                 $user->duty_ended_at = now();
             }
 
@@ -241,7 +242,7 @@ class ResponderController extends Controller
             $user = $request->user();
 
             // Validate user is a responder
-            if (!$user || !$user->isResponder()) {
+            if (! $user || ! $user->isResponder()) {
                 return response()->json([
                     'message' => 'Unauthorized. Only responders can view dispatches.',
                 ], 403);
@@ -367,7 +368,7 @@ class ResponderController extends Controller
             $user = $request->user();
 
             // Validate user is a responder
-            if (!$user || !$user->isResponder()) {
+            if (! $user || ! $user->isResponder()) {
                 return response()->json([
                     'message' => 'Unauthorized. Only responders can update dispatch status.',
                 ], 403);
@@ -433,7 +434,7 @@ class ResponderController extends Controller
             $user = $request->user();
 
             // Validate user is a responder
-            if (!$user || !$user->isResponder()) {
+            if (! $user || ! $user->isResponder()) {
                 return response()->json([
                     'message' => 'Unauthorized. Only responders can submit pre-arrival forms.',
                 ], 403);

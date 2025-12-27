@@ -30,7 +30,7 @@ class DispatchController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return redirect('/')->with('error', 'Unauthorized access');
             }
 
@@ -39,7 +39,7 @@ class DispatchController extends Controller
                 ->findOrFail($id);
 
             // Check if incident can be dispatched
-            if (!$incident->canAssignMoreResponders()) {
+            if (! $incident->canAssignMoreResponders()) {
                 return redirect()
                     ->route('admin.dashboard')
                     ->with('error', 'This incident is already completed or cancelled');
@@ -113,7 +113,7 @@ class DispatchController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -186,7 +186,7 @@ class DispatchController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
@@ -243,7 +243,7 @@ class DispatchController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isAdmin()) {
+            if (! $user || ! $user->isAdmin()) {
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 

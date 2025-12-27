@@ -12,15 +12,12 @@ class CheckRole
     /**
      * Handle an incoming request.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
      * @param  string  $role  The required role (e.g., 'admin', 'user')
-     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handle(Request $request, Closure $next, string $role): Response
     {
         // Check if user is authenticated
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json([
                     'message' => 'Unauthorized. Authentication required.',
@@ -40,7 +37,7 @@ class CheckRole
             default => false,
         };
 
-        if (!$hasRole) {
+        if (! $hasRole) {
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json([
                     'message' => "Unauthorized. {$role} access required.",

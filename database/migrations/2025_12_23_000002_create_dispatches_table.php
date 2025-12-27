@@ -23,20 +23,20 @@ return new class extends Migration
 
             // Foreign keys
             $table->foreignId('incident_id')
-                  ->constrained('incidents')
-                  ->onDelete('cascade')
-                  ->comment('Incident being responded to');
+                ->constrained('incidents')
+                ->onDelete('cascade')
+                ->comment('Incident being responded to');
 
             $table->foreignId('responder_id')
-                  ->constrained('users')
-                  ->onDelete('cascade')
-                  ->comment('Responder assigned to incident');
+                ->constrained('users')
+                ->onDelete('cascade')
+                ->comment('Responder assigned to incident');
 
             $table->foreignId('assigned_by_admin_id')
-                  ->nullable()
-                  ->constrained('users')
-                  ->onDelete('set null')
-                  ->comment('Admin who made the assignment');
+                ->nullable()
+                ->constrained('users')
+                ->onDelete('set null')
+                ->comment('Admin who made the assignment');
 
             // Dispatch status tracking
             $table->enum('status', [
@@ -45,30 +45,30 @@ return new class extends Migration
                 'en_route',   // Responder is on the way
                 'arrived',    // Responder arrived at scene
                 'completed',  // Incident handled
-                'cancelled'   // Dispatch cancelled
+                'cancelled',   // Dispatch cancelled
             ])->default('assigned')->comment('Current dispatch status');
 
             // Distance and time estimates (calculated at assignment time)
             $table->decimal('distance_meters', 10, 2)->nullable()
-                  ->comment('Road distance in meters at time of assignment');
+                ->comment('Road distance in meters at time of assignment');
             $table->decimal('estimated_duration_seconds', 10, 2)->nullable()
-                  ->comment('Estimated travel time in seconds');
+                ->comment('Estimated travel time in seconds');
 
             // Status timestamps - track complete timeline
             $table->timestamp('assigned_at')->useCurrent()
-                  ->comment('When admin assigned responder');
+                ->comment('When admin assigned responder');
             $table->timestamp('accepted_at')->nullable()
-                  ->comment('When responder accepted');
+                ->comment('When responder accepted');
             $table->timestamp('en_route_at')->nullable()
-                  ->comment('When responder started traveling');
+                ->comment('When responder started traveling');
             $table->timestamp('arrived_at')->nullable()
-                  ->comment('When responder arrived at scene');
+                ->comment('When responder arrived at scene');
             $table->timestamp('completed_at')->nullable()
-                  ->comment('When responder completed handling');
+                ->comment('When responder completed handling');
             $table->timestamp('cancelled_at')->nullable()
-                  ->comment('When dispatch was cancelled');
+                ->comment('When dispatch was cancelled');
             $table->text('cancellation_reason')->nullable()
-                  ->comment('Reason for cancellation if applicable');
+                ->comment('Reason for cancellation if applicable');
 
             $table->timestamps();
 

@@ -29,8 +29,8 @@ class VerificationService
     public static function verifyCode(string $email, string $code): bool
     {
         $storedCode = Cache::get("verification_code_{$email}");
-        
-        if (!$storedCode) {
+
+        if (! $storedCode) {
             return false;
         }
 
@@ -43,8 +43,8 @@ class VerificationService
     public static function isCodeExpired(string $email): bool
     {
         $expiresAt = Cache::get("verification_code_expires_{$email}");
-        
-        if (!$expiresAt) {
+
+        if (! $expiresAt) {
             return true;
         }
 
@@ -60,5 +60,3 @@ class VerificationService
         Cache::forget("verification_code_expires_{$email}");
     }
 }
-
-
