@@ -1,7 +1,41 @@
 # Mobile App AI Prompt: Admin-Initiated Call Feature
 
+## 🚨 QUICK DIAGNOSIS
+
+### Is Your Mobile App NOT Showing Incoming Calls?
+
+**The problem**: Your app is NOT polling the `/api/call/incoming` endpoint.
+
+**Quick test**:
+```bash
+# Test if backend is working (replace with your token)
+curl -X GET https://emsconnect.online/api/call/incoming \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -H "Accept: application/json"
+
+# Expected response (no calls):
+# {"has_incoming_call":false,"call":null}
+
+# If you get 200 OK, backend is working!
+# If you get 401, your token is invalid
+```
+
+**How to verify polling is working in your app**:
+1. Add console logs in your polling service
+2. You should see logs every 3 seconds: `"[CALLS] Polling..."`
+3. If you DON'T see these logs → polling is NOT running
+
+**Still not working?**
+- See "Common Mistakes" section below
+- Check "Troubleshooting" section at the end
+- Read the comprehensive guide: `MOBILE_APP_IMPLEMENTATION_GUIDE.md`
+
+---
+
 ## Context
 The EMS-CONNECT admin web dashboard can now initiate voice calls to community users directly from the chat interface. Your mobile app needs to support receiving these incoming calls from admins.
+
+**CRITICAL**: The backend is working perfectly. Agora is configured. The ONLY thing missing is your mobile app polling for incoming calls.
 
 ## What Changed on Backend
 
@@ -451,6 +485,123 @@ const AGORA_APP_ID = "c81a013cd0db4defabcbdb7d005fe627"; // Provided in API resp
 
 ---
 
+## ⚠️ COMMON MISTAKES
+
+### Mistake 1: Polling Too Slow
+❌ **Bad**: `setInterval(..., 10000)` // 10 seconds - TOO SLOW
+✅ **Good**: `setInterval(..., 3000)` // 3 seconds
+
+**Why**: User expects incoming call screen within 3 seconds max.
+
+### Mistake 2: Forgetting to Start Polling on Login
+❌ **Bad**:
+```javascript
+const handleLogin = async () => {
+  await loginAPI();
+  // Forgot to start polling!
+};
+```
+
+✅ **Good**:
+```javascript
+const handleLogin = async () => {
+  await loginAPI();
+  IncomingCallService.startPolling(); // ← CRITICAL
+};
+```
+
+### Mistake 3: Not Stopping Polling on Logout
+❌ **Bad**: Polling continues after logout → wasted battery and API calls
+
+✅ **Good**:
+```javascript
+const handleLogout = async () => {
+  IncomingCallService.stopPolling(); // ← Stop first
+  await logoutAPI();
+};
+```
+
+### Mistake 4: Not Handling 401 Unauthorized Errors
+❌ **Bad**: Ignoring 401 errors → polling continues with invalid token
+
+✅ **Good**:
+```javascript
+if (error.response?.status === 401) {
+  console.error('[CALLS] Token expired');
+  IncomingCallService.stopPolling();
+  // Force re-login
+}
+```
+
+### Mistake 5: Polling While Showing Incoming Call Screen
+❌ **Bad**: Polling continues even when call screen is showing → multiple callbacks triggered
+
+✅ **Good**:
+```javascript
+if (data.has_incoming_call) {
+  this.stopPolling(); // ← Stop BEFORE showing screen
+  showIncomingCallScreen(data.call);
+}
+```
+
+### Mistake 6: Not Resuming Polling After Call Ends
+❌ **Bad**: After rejecting or ending call, polling never resumes → can't receive next call
+
+✅ **Good**:
+```javascript
+const endCall = async () => {
+  await cleanupAgora();
+  navigation.goBack();
+  IncomingCallService.startPolling(); // ← MUST resume
+};
+
+const rejectCall = async () => {
+  await rejectAPI();
+  navigation.goBack();
+  IncomingCallService.startPolling(); // ← MUST resume
+};
+```
+
+### Mistake 7: Not Requesting Microphone Permissions
+❌ **Bad**: Join Agora without checking permissions → silent failure
+
+✅ **Good**:
+```javascript
+import { PermissionsAndroid, Platform } from 'react-native';
+
+const requestPermissions = async () => {
+  if (Platform.OS === 'android') {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+    );
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  }
+  return true;
+};
+
+// Before joining Agora:
+const hasPermission = await requestPermissions();
+if (!hasPermission) {
+  alert('Microphone permission required for calls');
+  return;
+}
+```
+
+### Mistake 8: Hardcoding API URL Without Environment Check
+❌ **Bad**:
+```javascript
+const API_URL = 'http://localhost:8000'; // Won't work on real device!
+```
+
+✅ **Good**:
+```javascript
+const API_URL = __DEV__
+  ? 'http://YOUR_LOCAL_IP:8000'  // Development
+  : 'https://emsconnect.online';  // Production
+```
+
+---
+
 ## Future Enhancements (Not Required Now)
 
 These features are planned for future updates but not required for initial implementation:
@@ -460,6 +611,225 @@ These features are planned for future updates but not required for initial imple
 - Call history view in mobile app
 - Video calling support
 - Conference calls (multiple participants)
+
+---
+
+## 🐛 DETAILED TROUBLESHOOTING
+
+### Issue 1: Incoming Call Screen Never Appears
+
+**Symptoms**:
+- Admin clicks call button
+- Agora logs show connection on web dashboard
+- Mobile app shows nothing
+
+**Root Cause**: Mobile app is NOT polling
+
+**Debug Steps**:
+1. Check if polling service is running:
+   ```javascript
+   console.log('[DEBUG] Is polling?', IncomingCallService.isActive());
+   ```
+
+2. Add debug logs to polling function:
+   ```javascript
+   console.log('[DEBUG] Polling iteration at', new Date().toISOString());
+   ```
+
+3. Manually test API:
+   ```bash
+   # Get your token from AsyncStorage
+   curl -X GET https://emsconnect.online/api/call/incoming \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Accept: application/json"
+   ```
+
+**Solutions**:
+- ✅ Verify polling starts on login
+- ✅ Check console for polling logs every 3 seconds
+- ✅ Verify bearer token is valid
+- ✅ Check callback is registered BEFORE starting polling
+
+### Issue 2: "401 Unauthorized" on Polling
+
+**Symptoms**:
+- Console shows: `[CALLS] Poll error: 401 Unauthorized`
+- Polling stops working
+
+**Root Cause**: Bearer token is invalid, expired, or wrong format
+
+**Debug Steps**:
+1. Check token in storage:
+   ```javascript
+   const token = await AsyncStorage.getItem('auth_token');
+   console.log('[DEBUG] Token:', token ? token.substring(0, 20) + '...' : 'NULL');
+   ```
+
+2. Verify header format:
+   ```javascript
+   console.log('[DEBUG] Auth header:', `Bearer ${token}`);
+   ```
+
+3. Test token with cURL:
+   ```bash
+   curl -X GET https://emsconnect.online/api/call/incoming \
+     -H "Authorization: Bearer YOUR_TOKEN"
+   ```
+
+**Solutions**:
+- ✅ Re-login to get fresh token
+- ✅ Verify token format: `Bearer <token>` (note the space)
+- ✅ Check token is saved correctly after login
+- ✅ Ensure user role is 'community' (not 'responder')
+
+### Issue 3: Agora Join Fails
+
+**Symptoms**:
+- Incoming call screen appears
+- User taps Answer
+- Agora error: "Join channel failed"
+
+**Root Cause**: Invalid Agora App ID, wrong channel name, or permissions not granted
+
+**Debug Steps**:
+1. Log Agora credentials:
+   ```javascript
+   console.log('[DEBUG] Agora App ID:', agoraAppId);
+   console.log('[DEBUG] Channel Name:', channelName);
+   ```
+
+2. Verify credentials format:
+   - App ID: 32-character hex string (e.g., `c81a013cd0db4defabcbdb7d005fe627`)
+   - Channel: `emergency_call_admin_<id>_<timestamp>`
+
+3. Check microphone permission:
+   ```javascript
+   const permission = await PermissionsAndroid.check(
+     PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+   );
+   console.log('[DEBUG] Mic permission:', permission);
+   ```
+
+**Solutions**:
+- ✅ Request microphone permission BEFORE joining
+- ✅ Verify Agora SDK is installed: `npm list react-native-agora`
+- ✅ Test with Agora demo app first
+- ✅ Check Agora console for app ID validity
+
+### Issue 4: No Audio Between Users
+
+**Symptoms**:
+- Call connects successfully
+- No audio heard on either side
+
+**Root Cause**: Muted microphone, permission denied, or Agora not configured correctly
+
+**Debug Steps**:
+1. Check if muted:
+   ```javascript
+   console.log('[DEBUG] Is muted?', isMuted);
+   ```
+
+2. Verify Agora channel profile:
+   ```javascript
+   await engine.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
+   ```
+
+3. Check client role:
+   ```javascript
+   await engine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+   ```
+
+**Solutions**:
+- ✅ Unmute microphone
+- ✅ Grant microphone permissions
+- ✅ Verify both users are in same channel
+- ✅ Test admin speaks first (easier to verify)
+- ✅ Check device volume is not zero
+
+### Issue 5: Polling Never Stops (Battery Drain)
+
+**Symptoms**:
+- Polling continues even after logout
+- Battery drains quickly
+
+**Root Cause**: Forgot to call `stopPolling()` on logout
+
+**Debug Steps**:
+1. Add debug log to stopPolling:
+   ```javascript
+   stopPolling() {
+     console.log('[DEBUG] Stopping polling service');
+     clearInterval(this.pollIntervalId);
+   }
+   ```
+
+2. Verify logout calls stopPolling:
+   ```javascript
+   const handleLogout = async () => {
+     console.log('[DEBUG] Logout initiated');
+     IncomingCallService.stopPolling();
+     // ... rest of logout
+   };
+   ```
+
+**Solutions**:
+- ✅ Always call `stopPolling()` on logout
+- ✅ Stop polling when app goes to background (optional)
+- ✅ Resume polling when app returns to foreground
+
+### Issue 6: Multiple Incoming Call Screens Appear
+
+**Symptoms**:
+- One admin call triggers multiple incoming call screens
+
+**Root Cause**: Callback triggered multiple times because polling didn't stop
+
+**Debug Steps**:
+1. Add log when callback is triggered:
+   ```javascript
+   if (this.onIncomingCallCallback) {
+     console.log('[DEBUG] Triggering callback for call', call.id);
+     this.onIncomingCallCallback(call, agoraAppId);
+   }
+   ```
+
+2. Verify polling stops BEFORE callback:
+   ```javascript
+   if (data.has_incoming_call) {
+     this.stopPolling(); // ← MUST be BEFORE callback
+     this.onIncomingCallCallback(data.call, data.agora_app_id);
+   }
+   ```
+
+**Solutions**:
+- ✅ Stop polling IMMEDIATELY when call detected
+- ✅ Add debounce to callback if needed
+- ✅ Check `isPolling` flag before triggering callback
+
+### Issue 7: Polling Doesn't Resume After Call
+
+**Symptoms**:
+- First call works fine
+- Can't receive second call from admin
+
+**Root Cause**: Forgot to resume polling after ending/rejecting call
+
+**Debug Steps**:
+1. Add logs to end call function:
+   ```javascript
+   const endCall = async () => {
+     console.log('[DEBUG] Ending call...');
+     await cleanupAgora();
+     console.log('[DEBUG] Resuming polling...');
+     IncomingCallService.startPolling();
+   };
+   ```
+
+**Solutions**:
+- ✅ Resume polling after endCall()
+- ✅ Resume polling after rejectCall()
+- ✅ Verify polling service is active after call ends
 
 ---
 
