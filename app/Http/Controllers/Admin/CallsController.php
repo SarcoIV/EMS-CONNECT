@@ -275,6 +275,15 @@ class CallsController extends Controller
      */
     public function initiateCall(Request $request)
     {
+        Log::info('[CALLS] ===== INITIATE CALL ENDPOINT HIT =====', [
+            'authenticated_user' => $request->user()?->id,
+            'user_role' => $request->user()?->user_role,
+            'request_data' => $request->all(),
+            'route_name' => $request->route()?->getName(),
+            'route_uri' => $request->route()?->uri(),
+            'ip' => $request->ip(),
+        ]);
+
         try {
             $user = $request->user();
 

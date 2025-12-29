@@ -327,18 +327,34 @@ export default function Chats({ user }: ChatsProps) {
 
     // Call handling functions
     const handleInitiateCall = async () => {
-        if (!selectedConversation) return;
+        if (!selectedConversation) {
+            console.error('[CALLS] No conversation selected');
+            return;
+        }
+
+        console.log('[CALLS] Starting call initiation', {
+            user_id: selectedConversation.user.id,
+            incident_id: selectedConversation.incident_id,
+            user_name: selectedConversation.user.name,
+            timestamp: new Date().toISOString(),
+        });
 
         try {
             setIsInitiatingCall(true);
+
+            console.log('[CALLS] Sending POST request to /admin/calls/initiate');
 
             const response = await axios.post('/admin/calls/initiate', {
                 user_id: selectedConversation.user.id,
                 incident_id: selectedConversation.incident_id,
             });
 
+            console.log('[CALLS] Response received:', response.data);
+
             const { call, channel_name, agora_app_id } = response.data;
             setOutgoingCall(call);
+
+            console.log('[CALLS] Joining Agora channel:', channel_name);
 
             // Join Agora channel immediately
             await joinAgoraChannel(agora_app_id, channel_name);
@@ -346,12 +362,30 @@ export default function Chats({ user }: ChatsProps) {
             setIsInOutgoingCall(true);
             setIsInitiatingCall(false);
 
+            console.log('[CALLS] Call initiated successfully');
+
             // Start polling for answer
             startCallStatusPolling(call.id);
 
         } catch (error: any) {
-            console.error('Failed to initiate call:', error);
-            alert(error.response?.data?.message || 'Failed to initiate call. Please try again.');
+            console.error('[CALLS] Failed to initiate call:', {
+                error: error,
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                url: error.config?.url,
+                method: error.config?.method,
+                headers: error.config?.headers,
+            });
+
+            // More detailed error message
+            const errorMessage = error.response?.data?.message
+                || error.response?.data?.error
+                || error.message
+                || 'Failed to initiate call. Please try again.';
+
+            alert(`Call Error: ${errorMessage}\n\nStatus: ${error.response?.status || 'Unknown'}\nCheck browser console for full details.`);
             setIsInitiatingCall(false);
         }
     };
