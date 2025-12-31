@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
+import { DispatchConfirmationModal } from '@/components/admin/DispatchConfirmationModal';
+import { DispatchSuccessModal } from '@/components/admin/DispatchSuccessModal';
 import axios from 'axios';
 import DispatchMap from './DispatchMap';
 import RespondersList from './RespondersList';
@@ -97,6 +99,9 @@ export default function Dispatch({ user, incident }: DispatchProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingResponders, setIsLoadingResponders] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     // Fetch available responders
     const fetchResponders = useCallback(async () => {
@@ -137,19 +142,15 @@ export default function Dispatch({ user, incident }: DispatchProps) {
         setError(null);
     };
 
-    // Handle confirm dispatch
-    const handleConfirmDispatch = async () => {
+    // Handle confirm dispatch button click
+    const handleConfirmDispatch = () => {
         if (!selectedResponder) return;
+        setShowConfirmModal(true);
+    };
 
-        // Show confirmation dialog
-        const confirmed = window.confirm(
-            `Dispatch ${selectedResponder.name} to this incident?\n\n` +
-            `Distance: ${selectedResponder.distance_text}\n` +
-            `ETA: ${selectedResponder.duration_text}\n\n` +
-            `The responder will be notified and can accept the assignment via their mobile app.`
-        );
-
-        if (!confirmed) return;
+    // Handle actual dispatch after modal confirmation
+    const handleDispatchConfirmed = async () => {
+        if (!selectedResponder) return;
 
         try {
             setIsLoading(true);
@@ -160,18 +161,27 @@ export default function Dispatch({ user, incident }: DispatchProps) {
                 responder_id: selectedResponder.id,
             });
 
-            alert(`✅ ${response.data.message}\n\nResponder: ${selectedResponder.name}\nDistance: ${selectedResponder.distance_text}\nETA: ${selectedResponder.duration_text}`);
+            // Close confirmation modal
+            setShowConfirmModal(false);
 
-            // Redirect back to dashboard
-            window.location.href = '/admin/dashboard';
+            // Show success modal
+            setSuccessMessage(response.data.message);
+            setShowSuccessModal(true);
         } catch (err: any) {
             console.error('Failed to assign responder:', err);
             const errorMessage = err.response?.data?.message || 'Failed to assign responder. Please try again.';
             setError(errorMessage);
+            setShowConfirmModal(false);
             alert(`❌ Error: ${errorMessage}`);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Handle success modal close - redirect to dashboard
+    const handleSuccessModalClose = () => {
+        setShowSuccessModal(false);
+        window.location.href = '/admin/dashboard';
     };
 
     return (
@@ -298,6 +308,23 @@ export default function Dispatch({ user, incident }: DispatchProps) {
                             isLoadingResponders={isLoadingResponders}
                         />
                     </div>
+
+                    {/* Dispatch Confirmation Modal */}
+                    <DispatchConfirmationModal
+                        isOpen={showConfirmModal}
+                        onClose={() => setShowConfirmModal(false)}
+                        onConfirm={handleDispatchConfirmed}
+                        responder={selectedResponder}
+                        isLoading={isLoading}
+                    />
+
+                    {/* Dispatch Success Modal */}
+                    <DispatchSuccessModal
+                        isOpen={showSuccessModal}
+                        onClose={handleSuccessModalClose}
+                        responder={selectedResponder}
+                        message={successMessage}
+                    />
                 </main>
             </div>
         </div>
