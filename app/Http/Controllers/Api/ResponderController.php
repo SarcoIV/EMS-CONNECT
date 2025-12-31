@@ -424,9 +424,20 @@ class ResponderController extends Controller
     }
 
     /**
-     * Store pre-arrival form for a dispatch.
+     * Store or update pre-arrival information for a dispatch.
+     *
+     * IMPORTANT: This form is OPTIONAL and can be submitted at any time
+     * during en_route or arrived status. It does NOT block status transitions.
+     *
+     * Mobile apps should present this as a non-blocking feature (e.g., floating
+     * button, optional modal) that responders can choose to fill out while
+     * traveling to the incident scene.
      *
      * POST /api/responder/dispatches/{dispatchId}/pre-arrival
+     *
+     * @param Request $request
+     * @param int $dispatchId
+     * @return JsonResponse
      */
     public function storePreArrival(Request $request, $dispatchId)
     {

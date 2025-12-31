@@ -212,3 +212,27 @@ Note: This system has TWO separate role systems:
 - `role` field: Mobile app roles (responder/community)
 - `user_role` field: Web app roles (admin/user)
 
+### Pre-Arrival Form Behavior
+
+**Pre-Arrival is an OPTIONAL data collection form, NOT a required status phase.**
+
+**Dispatch Status Flow:**
+```
+assigned → accepted → en_route → arrived → completed/cancelled
+```
+
+**Pre-Arrival Form:**
+- Optional form responders can submit during `en_route` or `arrived` status
+- Collects patient information (name, age, sex, incident type) before arrival
+- Submitted via `POST /api/responder/dispatches/{dispatchId}/pre-arrival`
+- Can be submitted multiple times (updates existing form)
+- Does NOT block status transitions
+- Mobile apps should implement as non-blocking UI (floating button/optional modal)
+
+**Implementation Guidelines for Mobile Apps:**
+1. Never require pre-arrival form for status progression
+2. Show map and route immediately when dispatch is accepted/en-route
+3. Present pre-arrival form as optional overlay/modal
+4. Allow responders to close form without submitting
+5. Enable form submission during both en_route and arrived statuses
+
