@@ -84,6 +84,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [IncidentController::class, 'show'])
             ->where('id', '[0-9]+');
 
+        // Get real-time responder tracking for incident
+        Route::get('/{id}/tracking', [IncidentController::class, 'tracking'])
+            ->where('id', '[0-9]+');
+
         // Cancel incident
         Route::post('/{id}/cancel', [IncidentController::class, 'cancel'])
             ->where('id', '[0-9]+');
