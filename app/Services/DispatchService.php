@@ -177,6 +177,32 @@ class DispatchService
     }
 
     /**
+     * Validate if a status transition is allowed.
+     *
+     * @param  string  $currentStatus  Current dispatch status
+     * @param  string  $newStatus  Desired new status
+     * @return bool True if transition is valid
+     */
+    private function validateStatusTransition(string $currentStatus, string $newStatus): bool
+    {
+        $validTransitions = [
+            'assigned' => ['accepted', 'declined', 'cancelled'],
+            'accepted' => ['en_route', 'cancelled'],
+            'en_route' => ['arrived', 'cancelled'],
+            'arrived' => ['completed', 'cancelled'],
+            'completed' => [],  // Terminal state
+            'declined' => [],   // Terminal state
+            'cancelled' => [],  // Terminal state
+        ];
+
+        if (! isset($validTransitions[$currentStatus])) {
+            return false;
+        }
+
+        return in_array($newStatus, $validTransitions[$currentStatus]);
+    }
+
+    /**
      * Update dispatch status (called by responder via mobile app).
      *
      * @param  Dispatch  $dispatch  The dispatch to update
@@ -191,10 +217,15 @@ class DispatchService
         string $newStatus,
         ?string $reason = null
     ): Dispatch {
-        $allowedStatuses = ['accepted', 'en_route', 'arrived', 'completed', 'cancelled'];
+        $allowedStatuses = ['accepted', 'declined', 'en_route', 'arrived', 'completed', 'cancelled'];
 
         if (! in_array($newStatus, $allowedStatuses)) {
             throw new \Exception("Invalid dispatch status: {$newStatus}");
+        }
+
+        // Validate status transition
+        if (! $this->validateStatusTransition($dispatch->status, $newStatus)) {
+            throw new \Exception("Invalid status transition from {$dispatch->status} to {$newStatus}");
         }
 
         DB::beginTransaction();
@@ -237,6 +268,12 @@ class DispatchService
                     }
                     break;
 
+                case 'declined':
+                    $dispatch->decline($reason);
+                    $responder->responder_status = 'idle';
+                    $incident->responders_assigned = max(0, $incident->responders_assigned - 1);
+                    break;
+
                 case 'cancelled':
                     $dispatch->cancel($reason);
                     $responder->responder_status = 'idle';
@@ -254,6 +291,11 @@ class DispatchService
             $incident->save();
 
             DB::commit();
+
+            // Check if incident should auto-complete when all dispatches are finished
+            if (in_array($newStatus, ['completed', 'declined', 'cancelled'])) {
+                $this->checkAndCompleteIncident($incident);
+            }
 
             Log::info('[DISPATCH] ✅ Dispatch status updated', [
                 'dispatch_id' => $dispatch->id,
@@ -274,6 +316,31 @@ class DispatchService
             ]);
 
             throw $e;
+        }
+    }
+
+    /**
+     * Check if incident should be auto-completed when all dispatches are finished.
+     *
+     * @param  Incident  $incident  The incident to check
+     * @return void
+     */
+    private function checkAndCompleteIncident(Incident $incident): void
+    {
+        // Only auto-complete if no active dispatches remain
+        $activeDispatches = Dispatch::where('incident_id', $incident->id)
+            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+            ->count();
+
+        if ($activeDispatches === 0 && $incident->status === 'dispatched') {
+            $incident->status = 'completed';
+            $incident->completed_at = now();
+            $incident->save();
+
+            Log::info('[DISPATCH] 🎯 Incident auto-completed', [
+                'incident_id' => $incident->id,
+                'all_dispatches_finished' => true,
+            ]);
         }
     }
 

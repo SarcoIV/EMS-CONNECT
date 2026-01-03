@@ -385,7 +385,7 @@ class ResponderController extends Controller
 
             // Validate request
             $validated = $request->validate([
-                'status' => ['required', 'in:accepted,en_route,arrived,completed'],
+                'status' => ['required', 'in:accepted,declined,en_route,arrived,completed'],
             ]);
 
             // Update dispatch status using service

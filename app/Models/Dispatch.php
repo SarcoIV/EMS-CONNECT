@@ -141,6 +141,18 @@ class Dispatch extends Model
     }
 
     /**
+     * Decline this dispatch (responder rejects assignment).
+     */
+    public function decline(?string $reason = null): bool
+    {
+        $this->status = 'declined';
+        $this->cancelled_at = now(); // Reuse cancelled_at for declined timestamp
+        $this->cancellation_reason = $reason;
+
+        return $this->save();
+    }
+
+    /**
      * Cancel this dispatch.
      */
     public function cancel(?string $reason = null): bool
