@@ -212,6 +212,36 @@ Note: This system has TWO separate role systems:
 - `role` field: Mobile app roles (responder/community)
 - `user_role` field: Web app roles (admin/user)
 
+### Database Compatibility (PostgreSQL vs MySQL/MariaDB)
+
+**Important**: Local development uses PostgreSQL, but production may use MySQL/MariaDB.
+
+When writing migrations that modify ENUM-like constraints:
+- **PostgreSQL**: Uses CHECK constraints with ARRAY syntax
+- **MySQL/MariaDB**: Uses ENUM column definitions
+
+**Always use database driver detection** for migrations that modify status columns:
+
+```php
+$driver = DB::connection()->getDriverName();
+
+if ($driver === 'mysql') {
+    DB::statement("
+        ALTER TABLE table_name
+        MODIFY COLUMN status ENUM('value1', 'value2') NOT NULL DEFAULT 'value1'
+    ");
+} elseif ($driver === 'pgsql') {
+    DB::statement('ALTER TABLE table_name DROP CONSTRAINT IF EXISTS table_status_check');
+    DB::statement("
+        ALTER TABLE table_name
+        ADD CONSTRAINT table_status_check
+        CHECK (status::text = ANY (ARRAY['value1'::character varying, 'value2'::character varying]::text[]))
+    ");
+}
+```
+
+**Reference**: See `database/migrations/2026_01_03_034739_add_declined_status_to_dispatches_table.php` for a working example.
+
 ### Pre-Arrival Form Behavior
 
 **Pre-Arrival is an OPTIONAL data collection form, NOT a required status phase.**

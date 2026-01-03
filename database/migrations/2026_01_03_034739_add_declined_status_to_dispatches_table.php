@@ -10,15 +10,40 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop existing check constraint
-        DB::statement('ALTER TABLE dispatches DROP CONSTRAINT IF EXISTS dispatches_status_check');
+        $driver = DB::connection()->getDriverName();
 
-        // Add new check constraint with 'declined' status
-        DB::statement("
-            ALTER TABLE dispatches
-            ADD CONSTRAINT dispatches_status_check
-            CHECK (status::text = ANY (ARRAY['assigned'::character varying, 'accepted'::character varying, 'declined'::character varying, 'en_route'::character varying, 'arrived'::character varying, 'completed'::character varying, 'cancelled'::character varying]::text[]))
-        ");
+        if ($driver === 'mysql') {
+            // MySQL/MariaDB: Modify ENUM column directly
+            DB::statement("
+                ALTER TABLE dispatches
+                MODIFY COLUMN status ENUM(
+                    'assigned',
+                    'accepted',
+                    'declined',
+                    'en_route',
+                    'arrived',
+                    'completed',
+                    'cancelled'
+                ) NOT NULL DEFAULT 'assigned'
+            ");
+        } elseif ($driver === 'pgsql') {
+            // PostgreSQL: Drop and recreate CHECK constraint
+            DB::statement('ALTER TABLE dispatches DROP CONSTRAINT IF EXISTS dispatches_status_check');
+
+            DB::statement("
+                ALTER TABLE dispatches
+                ADD CONSTRAINT dispatches_status_check
+                CHECK (status::text = ANY (ARRAY[
+                    'assigned'::character varying,
+                    'accepted'::character varying,
+                    'declined'::character varying,
+                    'en_route'::character varying,
+                    'arrived'::character varying,
+                    'completed'::character varying,
+                    'cancelled'::character varying
+                ]::text[]))
+            ");
+        }
     }
 
     /**
@@ -26,14 +51,37 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Drop existing check constraint
-        DB::statement('ALTER TABLE dispatches DROP CONSTRAINT IF EXISTS dispatches_status_check');
+        $driver = DB::connection()->getDriverName();
 
-        // Restore original check constraint without 'declined'
-        DB::statement("
-            ALTER TABLE dispatches
-            ADD CONSTRAINT dispatches_status_check
-            CHECK (status::text = ANY (ARRAY['assigned'::character varying, 'accepted'::character varying, 'en_route'::character varying, 'arrived'::character varying, 'completed'::character varying, 'cancelled'::character varying]::text[]))
-        ");
+        if ($driver === 'mysql') {
+            // MySQL/MariaDB: Restore original ENUM without 'declined'
+            DB::statement("
+                ALTER TABLE dispatches
+                MODIFY COLUMN status ENUM(
+                    'assigned',
+                    'accepted',
+                    'en_route',
+                    'arrived',
+                    'completed',
+                    'cancelled'
+                ) NOT NULL DEFAULT 'assigned'
+            ");
+        } elseif ($driver === 'pgsql') {
+            // PostgreSQL: Restore original CHECK constraint
+            DB::statement('ALTER TABLE dispatches DROP CONSTRAINT IF EXISTS dispatches_status_check');
+
+            DB::statement("
+                ALTER TABLE dispatches
+                ADD CONSTRAINT dispatches_status_check
+                CHECK (status::text = ANY (ARRAY[
+                    'assigned'::character varying,
+                    'accepted'::character varying,
+                    'en_route'::character varying,
+                    'arrived'::character varying,
+                    'completed'::character varying,
+                    'cancelled'::character varying
+                ]::text[]))
+            ");
+        }
     }
 };
