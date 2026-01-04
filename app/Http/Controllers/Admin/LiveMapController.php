@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Call;
 use App\Models\Dispatch;
+use App\Models\Hospital;
 use App\Models\Incident;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -33,6 +34,9 @@ class LiveMapController extends Controller
         // Get active responders
         $activeResponders = $this->getActiveResponders();
 
+        // Get hospitals
+        $hospitals = $this->getHospitalsForMap();
+
         // Get focused incident if specified
         $focusedIncidentId = $request->query('incident');
 
@@ -45,6 +49,7 @@ class LiveMapController extends Controller
             'activeCalls' => $activeCalls,
             'activeDispatches' => $activeDispatches,
             'activeResponders' => $activeResponders,
+            'hospitals' => $hospitals,
             'focusedIncidentId' => $focusedIncidentId ? (int) $focusedIncidentId : null,
         ]);
     }
@@ -67,12 +72,14 @@ class LiveMapController extends Controller
             $activeCalls = $this->getActiveCalls();
             $activeDispatches = $this->getActiveDispatches();
             $activeResponders = $this->getActiveResponders();
+            $hospitals = $this->getHospitalsForMap();
 
             return response()->json([
                 'incidents' => $incidents,
                 'activeCalls' => $activeCalls,
                 'activeDispatches' => $activeDispatches,
                 'activeResponders' => $activeResponders,
+                'hospitals' => $hospitals,
             ]);
         } catch (\Exception $e) {
             Log::error('[LIVEMAP] Failed to fetch map data', [
@@ -297,5 +304,34 @@ class LiveMapController extends Controller
                 'message' => 'Failed to fetch route history',
             ], 500);
         }
+    }
+
+    /**
+     * Get hospitals formatted for map display.
+     */
+    private function getHospitalsForMap(): array
+    {
+        $hospitals = Hospital::active()
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get();
+
+        return $hospitals->map(function ($hospital) {
+            return [
+                'id' => $hospital->id,
+                'name' => $hospital->name,
+                'type' => $hospital->type,
+                'address' => $hospital->address,
+                'latitude' => (float) $hospital->latitude,
+                'longitude' => (float) $hospital->longitude,
+                'phone_number' => $hospital->phone_number,
+                'specialties' => $hospital->specialties,
+                'image_url' => $hospital->full_image_url,
+                'has_emergency_room' => $hospital->has_emergency_room,
+                'description' => $hospital->description,
+                'website' => $hospital->website,
+                'bed_capacity' => $hospital->bed_capacity,
+            ];
+        })->toArray();
     }
 }

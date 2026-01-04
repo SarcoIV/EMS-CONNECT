@@ -74,10 +74,27 @@ interface RoutePoint {
     timestamp: string;
 }
 
+interface Hospital {
+    id: number;
+    name: string;
+    type: 'government' | 'private';
+    address: string;
+    latitude: number;
+    longitude: number;
+    phone_number: string | null;
+    specialties: string[] | null;
+    image_url: string | null;
+    has_emergency_room: boolean;
+    description: string | null;
+    website: string | null;
+    bed_capacity: number | null;
+}
+
 interface LiveMapProps {
     user: { name: string; email: string };
     incidents?: Incident[];
     activeCalls?: ActiveCall[];
+    hospitals?: Hospital[];
     focusedIncidentId?: number;
 }
 
@@ -102,14 +119,16 @@ const typeIcons: Record<string, string> = {
     other: '⚠️',
 };
 
-export default function LiveMap({ 
-    user, 
-    incidents: initialIncidents = [], 
+export default function LiveMap({
+    user,
+    incidents: initialIncidents = [],
     activeCalls: initialCalls = [],
-    focusedIncidentId 
+    hospitals: initialHospitals = [],
+    focusedIncidentId
 }: LiveMapProps) {
     const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
     const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(initialCalls);
+    const [hospitals, setHospitals] = useState<Hospital[]>(initialHospitals);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterType, setFilterType] = useState<string>('all');
@@ -123,6 +142,7 @@ export default function LiveMap({
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const markersRef = useRef<L.Marker[]>([]);
     const responderMarkersRef = useRef<Map<number, L.Marker>>(new Map());
+    const hospitalMarkersRef = useRef<L.Marker[]>([]);
 
     // Filter incidents
     const filteredIncidents = incidents.filter(incident => {
@@ -158,10 +178,12 @@ export default function LiveMap({
 
             setIncidents(response.data.incidents || []);
             setActiveCalls(response.data.activeCalls || []);
+            setHospitals(response.data.hospitals || []);
             setLastUpdated(new Date());
 
             // Update markers on map
             updateMarkers(response.data.incidents || []);
+            updateHospitalMarkers(response.data.hospitals || []);
 
             // Update responder markers from activeDispatches (replaces Echo real-time updates)
             if (response.data.activeDispatches) {
@@ -238,6 +260,7 @@ export default function LiveMap({
 
                 // Initial markers
                 updateMarkers(initialIncidents);
+                updateHospitalMarkers(initialHospitals);
 
                 // Focus on specific incident if provided
                 if (focusedIncidentId) {
@@ -404,6 +427,73 @@ export default function LiveMap({
 
         // Store marker reference
         responderMarkersRef.current.set(responder.id, marker);
+    };
+
+    // Update hospital markers on map
+    const updateHospitalMarkers = async (hospitalData: Hospital[]) => {
+        if (!mapRef.current) return;
+
+        const L = (await import('leaflet')).default;
+
+        // Clear existing hospital markers
+        hospitalMarkersRef.current.forEach(marker => marker.remove());
+        hospitalMarkersRef.current = [];
+
+        // Add new hospital markers
+        hospitalData.forEach(hospital => {
+            if (!hospital.latitude || !hospital.longitude) return;
+
+            // Create custom icon based on type
+            const iconHtml = `
+                <div style="
+                    background-color: ${hospital.type === 'government' ? '#22c55e' : '#3b82f6'};
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 3px solid white;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    font-size: 14px;
+                ">
+                    🏥
+                </div>
+            `;
+
+            const icon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-marker',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+            });
+
+            const marker = L.marker([hospital.latitude, hospital.longitude], { icon })
+                .addTo(mapRef.current!);
+
+            // Add popup
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
+                        🏥 ${hospital.name}
+                    </div>
+                    <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${hospital.type === 'government' ? '#22c55e' : '#3b82f6'}20; color: ${hospital.type === 'government' ? '#22c55e' : '#3b82f6'};">
+                        ${hospital.type.toUpperCase()}
+                    </div>
+                    ${hospital.has_emergency_room ? '<span style="margin-left: 4px; color: #ef4444; font-size: 11px;">🚨 Emergency Room</span>' : ''}
+                    <div style="margin-top: 8px; font-size: 12px;">
+                        <strong>Address:</strong> ${hospital.address}<br/>
+                        ${hospital.phone_number ? `<strong>Phone:</strong> ${hospital.phone_number}<br/>` : ''}
+                        ${hospital.specialties && hospital.specialties.length > 0 ? `<strong>Specialties:</strong> ${hospital.specialties.slice(0, 3).join(', ')}${hospital.specialties.length > 3 ? '...' : ''}<br/>` : ''}
+                        ${hospital.bed_capacity ? `<strong>Bed Capacity:</strong> ${hospital.bed_capacity}<br/>` : ''}
+                    </div>
+                </div>
+            `;
+
+            marker.bindPopup(popupContent);
+
+            hospitalMarkersRef.current.push(marker);
+        });
     };
 
     // Draw route polylines for active dispatches
@@ -582,6 +672,16 @@ export default function LiveMap({
                                 <div className="flex items-center gap-2">
                                     <span className="h-3 w-3 rounded-full bg-red-500" />
                                     <span>Active Call</span>
+                                </div>
+                                <div className="mt-2 border-t border-gray-200 pt-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="h-3 w-3 rounded-full bg-green-500" />
+                                        <span>Gov Hospital</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="h-3 w-3 rounded-full bg-blue-500" />
+                                        <span>Private Hospital</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

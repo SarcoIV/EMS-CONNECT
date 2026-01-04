@@ -7,39 +7,31 @@ interface User {
     email: string;
 }
 
-interface HospitalDirectoryProps {
-    user: User;
-}
-
 interface Hospital {
     id: number;
     name: string;
-    imageUrl?: string;
+    type: 'government' | 'private';
+    address: string;
+    latitude: number;
+    longitude: number;
+    phone_number: string | null;
+    specialties: string[] | null;
+    image_url: string | null;
+    has_emergency_room: boolean;
+    description: string | null;
+    website: string | null;
+    bed_capacity: number | null;
 }
 
-export default function HospitalDirectory({ user }: HospitalDirectoryProps) {
-    // Government Hospitals
-    const governmentHospitals: Hospital[] = [
-        { id: 1, name: 'Quezon City General Hospital' },
-        { id: 2, name: 'East Avenue Medical Center' },
-        { id: 3, name: 'Philippine Children\'s Medical Center' },
-        { id: 4, name: 'Quirino Memorial Medical Center' },
-        { id: 5, name: 'Lung Center of the Philippines' },
-        { id: 6, name: 'Philippine Heart Center' },
-        { id: 7, name: 'Veterans Memorial Medical Center' },
-        { id: 8, name: 'Quezon Memorial Medical Center' },
-    ];
+interface HospitalDirectoryProps {
+    user: User;
+    hospitals: Hospital[];
+}
 
-    // Private Hospitals
-    const privateHospitals: Hospital[] = [
-        { id: 1, name: 'St. Luke\'s Medical Center' },
-        { id: 2, name: 'Fe Del Mundo Medical Center' },
-        { id: 3, name: 'World Citi Medical Center' },
-        { id: 4, name: 'Commonwealth Hospital' },
-        { id: 5, name: 'De Jesus Delgado Hospital' },
-        { id: 6, name: 'Mary Chiles General Hospital' },
-        { id: 7, name: 'Metro North Medical Center' },
-    ];
+export default function HospitalDirectory({ user, hospitals }: HospitalDirectoryProps) {
+    // Filter hospitals by type
+    const governmentHospitals = hospitals.filter(h => h.type === 'government');
+    const privateHospitals = hospitals.filter(h => h.type === 'private');
 
     return (
         <div className="flex h-screen bg-white">
@@ -61,9 +53,9 @@ export default function HospitalDirectory({ user }: HospitalDirectoryProps) {
                                             className="flex-shrink-0 w-64 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                                         >
                                             <div className="h-40 bg-gray-200 flex items-center justify-center overflow-hidden">
-                                                {hospital.imageUrl ? (
+                                                {hospital.image_url ? (
                                                     <img
-                                                        src={hospital.imageUrl}
+                                                        src={hospital.image_url}
                                                         alt={hospital.name}
                                                         className="w-full h-full object-cover"
                                                     />
@@ -96,9 +88,9 @@ export default function HospitalDirectory({ user }: HospitalDirectoryProps) {
                                             className="flex-shrink-0 w-64 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                                         >
                                             <div className="h-40 bg-gray-200 flex items-center justify-center overflow-hidden">
-                                                {hospital.imageUrl ? (
+                                                {hospital.image_url ? (
                                                     <img
-                                                        src={hospital.imageUrl}
+                                                        src={hospital.image_url}
                                                         alt={hospital.name}
                                                         className="w-full h-full object-cover"
                                                     />
