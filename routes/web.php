@@ -58,6 +58,7 @@ use App\Http\Controllers\Admin\CallsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DispatchController;
 use App\Http\Controllers\Admin\HospitalDirectoryController;
+use App\Http\Controllers\Admin\IncidentOverviewController;
 use App\Http\Controllers\Admin\IncidentReportsController;
 use App\Http\Controllers\Admin\LiveMapController;
 use App\Http\Controllers\Admin\PeopleController;
@@ -87,6 +88,9 @@ Route::middleware([AdminMiddleware::class])->group(function () {
     // Incident Reports
     Route::get('admin/incident-reports', [IncidentReportsController::class, 'index'])->name('admin.incident-reports');
     Route::get('admin/incident-reports/export', [IncidentReportsController::class, 'export'])->name('admin.incident-reports.export');
+
+    // Incident Overview (READ-ONLY monitoring page)
+    Route::get('admin/incidents/{id}/overview', [IncidentOverviewController::class, 'show'])->name('admin.incidents.overview');
 
     // Administration
     Route::get('admin/administration', [AdministrationController::class, 'index'])->name('admin.administration');

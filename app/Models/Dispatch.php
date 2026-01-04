@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Dispatch extends Model
 {
@@ -70,6 +71,14 @@ class Dispatch extends Model
     public function assignedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by_admin_id');
+    }
+
+    /**
+     * Get the pre-arrival form for this dispatch.
+     */
+    public function preArrivalForm(): HasOne
+    {
+        return $this->hasOne(PreArrivalForm::class);
     }
 
     /**

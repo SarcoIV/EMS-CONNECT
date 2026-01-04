@@ -8,8 +8,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
-import { Archive, BarChart, ChevronDown, LayoutDashboard, Map, MessageSquare, Settings, UserCog, Users, UserPen, Building2 } from 'lucide-react';
+import { Archive, BarChart, ChevronDown, ChevronRight, LayoutDashboard, Map, MessageSquare, Settings, UserCog, Users, UserPen, Building2 } from 'lucide-react';
 
 interface User {
     name: string;
@@ -22,9 +23,17 @@ interface SidebarProps {
 
 export function Sidebar({ user }: SidebarProps) {
     const { url } = usePage(); // Get the current route
+    const [expandedItems, setExpandedItems] = useState<string[]>(['incident-reports']); // Expanded by default
 
     // Function to check if the route matches
     const isActive = (path: string) => url.startsWith(path);
+
+    // Toggle expanded state
+    const toggleExpanded = (key: string) => {
+        setExpandedItems((prev) =>
+            prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+        );
+    };
 
     return (
         <div className="hidden w-64 flex-col border-r bg-white md:flex">
@@ -85,19 +94,47 @@ export function Sidebar({ user }: SidebarProps) {
                         </Button>
                     </Link>
 
-                    <Link href={route('admin.incident-reports')} className="w-full">
+                    {/* Incident Reports - Parent Item with Nested Children */}
+                    <div>
                         <Button
                             variant="ghost"
-                            className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
-                                isActive('/admin/incident-reports')
+                            onClick={() => toggleExpanded('incident-reports')}
+                            className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm ${
+                                isActive('/admin/incident')
                                     ? 'bg-[#7a1818] text-white shadow-sm'
                                     : 'text-slate-700 hover:bg-slate-100'
                             }`}
                         >
-                            <BarChart size={18} />
-                            <span>Incident Reports</span>
+                            <div className="flex items-center gap-3">
+                                <BarChart size={18} />
+                                <span>Incident Reports</span>
+                            </div>
+                            <ChevronRight
+                                size={16}
+                                className={`transition-transform ${
+                                    expandedItems.includes('incident-reports') ? 'rotate-90' : ''
+                                }`}
+                            />
                         </Button>
-                    </Link>
+
+                        {/* Nested Item: Incident List */}
+                        {expandedItems.includes('incident-reports') && (
+                            <div className="ml-6 mt-1 space-y-1">
+                                <Link href={route('admin.incident-reports')} className="w-full">
+                                    <Button
+                                        variant="ghost"
+                                        className={`flex w-full items-center justify-start gap-3 rounded-xl px-3 py-2 text-sm ${
+                                            url === '/admin/incident-reports'
+                                                ? 'bg-[#7a1818]/10 text-[#7a1818] font-medium'
+                                                : 'text-slate-600 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <span className="text-xs">Incident List</span>
+                                    </Button>
+                                </Link>
+                            </div>
+                        )}
+                    </div>
 
                     <Link href={route('admin.administration')} className="w-full">
                         <Button
