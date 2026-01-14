@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Call;
+use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -398,6 +399,21 @@ class CallsController extends Controller
                 'incident_id' => $call->incident_id,
                 'channel_name' => $channelName,
             ]);
+
+            // Create system message to automatically create a conversation in admin chats
+            if ($call->incident_id) {
+                Message::create([
+                    'incident_id' => $call->incident_id,
+                    'sender_id' => $user->id,
+                    'message' => '📞 Call initiated by admin',
+                    'is_read' => true, // Admin initiated, so mark as read
+                ]);
+
+                Log::info('[CALLS] System message created for admin-initiated call', [
+                    'call_id' => $call->id,
+                    'incident_id' => $call->incident_id,
+                ]);
+            }
 
             return response()->json([
                 'call' => $call,

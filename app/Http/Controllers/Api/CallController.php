@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Call;
 use App\Models\Incident;
+use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -91,6 +92,21 @@ class CallController extends Controller
                 'channel_name' => $channelName,
                 'started_at' => now()->toIso8601String(),
             ]);
+
+            // Create system message to automatically create a conversation in admin chats
+            if ($call->incident_id) {
+                Message::create([
+                    'incident_id' => $call->incident_id,
+                    'sender_id' => $user->id,
+                    'message' => '📞 Call started',
+                    'is_read' => false,
+                ]);
+
+                Log::info('[CALLS] System message created for conversation', [
+                    'call_id' => $call->id,
+                    'incident_id' => $call->incident_id,
+                ]);
+            }
 
             return response()->json([
                 'call' => [
