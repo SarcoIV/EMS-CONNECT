@@ -47,6 +47,14 @@ class User extends Authenticatable
         'duty_started_at',
         'duty_ended_at',
         'last_active_at',
+        // Responder profile fields
+        'badge_number',
+        'hospital_assigned',
+        // Community/medical profile fields
+        'blood_type',
+        'allergies',
+        'existing_conditions',
+        'medications',
     ];
 
     /**

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CallController;
 use App\Http\Controllers\Api\IncidentController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ResponderController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -45,6 +46,20 @@ Route::middleware('auth:sanctum')->group(function () {
     // -------------------------------------------------------------------------
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/user', [AuthController::class, 'user']);
+
+    // -------------------------------------------------------------------------
+    // User Profile Routes
+    // -------------------------------------------------------------------------
+    Route::prefix('user')->group(function () {
+        // Get user profile
+        Route::get('/profile', [UserController::class, 'show']);
+
+        // Update user profile
+        Route::put('/profile', [UserController::class, 'updateProfile']);
+
+        // Change password
+        Route::put('/password', [UserController::class, 'changePassword']);
+    });
 
     // -------------------------------------------------------------------------
     // DEBUG ENDPOINT - TEMPORARY (Remove after fixing mobile app)
