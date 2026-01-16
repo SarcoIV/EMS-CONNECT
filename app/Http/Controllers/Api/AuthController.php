@@ -376,12 +376,30 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
+        $user = $request->user();
+
         return response()->json([
             'user' => [
-                'id' => $request->user()->id,
-                'name' => $request->user()->name,
-                'email' => $request->user()->email,
-                'role' => $request->user()->role,
+                'id' => $user->id,
+                'name' => $user->name,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'username' => $user->username,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+                // Responder fields
+                'badge_number' => $user->badge_number,
+                'hospital_assigned' => $user->hospital_assigned,
+                // Community/medical fields
+                'blood_type' => $user->blood_type,
+                'allergies' => $user->allergies,
+                'existing_conditions' => $user->existing_conditions,
+                'medications' => $user->medications,
+                // Status fields (for responders)
+                'is_on_duty' => $user->is_on_duty,
+                'responder_status' => $user->responder_status,
+                'email_verified' => $user->email_verified,
             ],
         ]);
     }

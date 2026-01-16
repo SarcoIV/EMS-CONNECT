@@ -16,7 +16,7 @@ class UserController extends Controller
     {
         return response()->json([
             'message' => 'User profile retrieved successfully',
-            'data' => $request->user(),
+            'user' => $request->user(),
         ]);
     }
 
@@ -65,7 +65,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'data' => $user->fresh(),
+            'user' => $user->fresh(),
         ]);
     }
 
