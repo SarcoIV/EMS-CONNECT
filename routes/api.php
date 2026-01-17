@@ -54,11 +54,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Get user profile
         Route::get('/profile', [UserController::class, 'show']);
 
-        // Update user profile
-        Route::put('/profile', [UserController::class, 'updateProfile']);
+        // Update user profile (supports both PUT and POST for mobile compatibility)
+        Route::match(['put', 'post'], '/profile', [UserController::class, 'updateProfile']);
 
         // Change password
-        Route::put('/password', [UserController::class, 'changePassword']);
+        Route::match(['put', 'post'], '/password', [UserController::class, 'changePassword']);
     });
 
     // -------------------------------------------------------------------------
