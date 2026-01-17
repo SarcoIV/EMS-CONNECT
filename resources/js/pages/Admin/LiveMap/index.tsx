@@ -341,29 +341,7 @@ export default function LiveMap({
             const marker = L.marker([incident.latitude, incident.longitude], { icon })
                 .addTo(mapRef.current);
 
-            // Add popup
-            const popupContent = `
-                <div style="min-width: 200px;">
-                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
-                        ${typeIcons[incident.type] || '⚠️'} ${(incident.type || 'unknown').replace('_', ' ').toUpperCase()}
-                    </div>
-                    <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
-                        #${incident.id.toString().padStart(4, '0')}
-                    </div>
-                    <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${statusColors[incident.status] || '#6b7280'}20; color: ${statusColors[incident.status] || '#6b7280'};">
-                        ${(incident.status || 'unknown').toUpperCase()}
-                    </div>
-                    ${incident.has_active_call ? '<span style="margin-left: 4px; color: #ef4444; font-size: 11px;">📞 Active Call</span>' : ''}
-                    <div style="margin-top: 8px; font-size: 12px;">
-                        <strong>Reporter:</strong> ${incident.user?.name || 'Unknown'}<br/>
-                        <strong>Phone:</strong> ${incident.user?.phone_number || 'N/A'}<br/>
-                        <strong>Location:</strong> ${incident.address || 'No address'}
-                    </div>
-                    ${incident.description ? `<div style="margin-top: 8px; font-size: 12px; color: #666;">${incident.description}</div>` : ''}
-                </div>
-            `;
-
-            marker.bindPopup(popupContent);
+            // Click to select incident (no popup)
             marker.on('click', () => setSelectedIncident(incident));
 
             markersRef.current.push(marker);
@@ -863,10 +841,10 @@ export default function LiveMap({
                             
                             <div className="mt-3 flex gap-2">
                                 <a
-                                    href={`/admin/dashboard`}
+                                    href={`/admin/incidents/${selectedIncident.id}/overview`}
                                     className="flex-1 rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-700 hover:bg-slate-200"
                                 >
-                                    View in Dashboard
+                                    View Incident
                                 </a>
                             </div>
                         </div>
