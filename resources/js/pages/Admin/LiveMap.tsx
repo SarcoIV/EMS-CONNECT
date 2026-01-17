@@ -283,34 +283,7 @@ export default function LiveMap({
             const marker = L.marker([incident.latitude, incident.longitude], { icon })
                 .addTo(mapRef.current);
 
-            // Add popup
-            const popupContent = `
-                <div style="min-width: 200px;">
-                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">
-                        ${typeIcons[incident.type]} ${incident.type.replace('_', ' ').toUpperCase()}
-                    </div>
-                    <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
-                        #${incident.id.toString().padStart(4, '0')}
-                    </div>
-                    <div style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${statusColors[incident.status]}20; color: ${statusColors[incident.status]};">
-                        ${incident.status.toUpperCase()}
-                    </div>
-                    ${incident.has_active_call ? '<span style="margin-left: 4px; color: #ef4444; font-size: 11px;">📞 Active Call</span>' : ''}
-                    <div style="margin-top: 8px; font-size: 12px;">
-                        <strong>Reporter:</strong> ${incident.user?.name || 'Unknown'}<br/>
-                        <strong>Phone:</strong> ${incident.user?.phone_number || 'N/A'}<br/>
-                        <strong>Location:</strong> ${incident.address || 'No address'}
-                    </div>
-                    ${incident.description ? `<div style="margin-top: 8px; font-size: 12px; color: #666;">${incident.description}</div>` : ''}
-                    <div style="margin-top: 12px;">
-                        <a href="/admin/incidents/${incident.id}/overview" style="display: block; text-align: center; padding: 8px 12px; background: #f1f5f9; color: #334155; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: 500;">
-                            View in Dashboard
-                        </a>
-                    </div>
-                </div>
-            `;
-
-            marker.bindPopup(popupContent);
+            // Click to select incident (no popup)
             marker.on('click', () => setSelectedIncident(incident));
 
             markersRef.current.push(marker);
@@ -857,7 +830,7 @@ export default function LiveMap({
                                     href={`/admin/incidents/${selectedIncident.id}/overview`}
                                     className="flex-1 rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-700 hover:bg-slate-200"
                                 >
-                                    View in Dashboard
+                                    View Incident
                                 </a>
                             </div>
                         </div>
