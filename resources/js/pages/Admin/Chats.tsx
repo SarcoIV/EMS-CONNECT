@@ -39,10 +39,11 @@ interface LastMessage {
 
 interface Conversation {
     id: number;
-    incident_id: number;
+    user_id: number;
     user: User;
     incident_type: string;
     incident_status: string;
+    incident_count: number;
     last_message: LastMessage | null;
     unread_count: number;
     updated_at: string;
@@ -101,21 +102,27 @@ export default function Chats({ user }: ChatsProps) {
         }
     }, []);
 
-    // Fetch messages for selected conversation
-    const fetchMessages = useCallback(async (incidentId: number, showLoader = true) => {
+    // Fetch messages for selected conversation (by user ID)
+    const fetchMessages = useCallback(async (userId: number, showLoader = true) => {
         if (showLoader) setIsLoadingMessages(true);
 
         try {
-            const response = await axios.get(`/admin/chats/${incidentId}/messages`);
+            const response = await axios.get(`/admin/chats/user/${userId}/messages`);
             setMessages(response.data.messages);
-            setIncidentInfo(response.data.incident);
+            // Set incident info from the user data
+            setIncidentInfo({
+                id: response.data.latest_incident_id,
+                type: response.data.incidents?.[0]?.type || 'other',
+                status: response.data.incidents?.[0]?.status || 'pending',
+                user: response.data.user,
+            });
 
             // Mark conversation as read
-            await axios.post(`/admin/chats/${incidentId}/mark-read`);
+            await axios.post(`/admin/chats/user/${userId}/mark-read`);
 
             // Update unread count in conversations list
             setConversations(prev => prev.map(conv =>
-                conv.incident_id === incidentId ? { ...conv, unread_count: 0 } : conv
+                conv.user_id === userId ? { ...conv, unread_count: 0 } : conv
             ));
         } catch (error) {
             console.error('Failed to fetch messages:', error);
@@ -134,7 +141,7 @@ export default function Chats({ user }: ChatsProps) {
 
         try {
             const formData = new FormData();
-            formData.append('incident_id', selectedConversation.incident_id.toString());
+            formData.append('user_id', selectedConversation.user_id.toString());
 
             if (newMessage.trim()) {
                 formData.append('message', newMessage.trim());
@@ -213,7 +220,7 @@ export default function Chats({ user }: ChatsProps) {
     // Handle conversation selection
     const handleSelectConversation = (conversation: Conversation) => {
         setSelectedConversation(conversation);
-        fetchMessages(conversation.incident_id);
+        fetchMessages(conversation.user_id);
     };
 
     // Start polling for new messages
@@ -228,7 +235,7 @@ export default function Chats({ user }: ChatsProps) {
 
             // Poll messages if conversation is selected
             if (selectedConversation) {
-                fetchMessages(selectedConversation.incident_id, false);
+                fetchMessages(selectedConversation.user_id, false);
             }
         }, 3000); // Poll every 3 seconds
     }, [selectedConversation, fetchConversations, fetchMessages]);
@@ -415,7 +422,7 @@ export default function Chats({ user }: ChatsProps) {
                                                         {selectedConversation.incident_type.replace('_', ' ')}
                                                     </span>
                                                     <span className="text-xs text-gray-500">
-                                                        Incident #{selectedConversation.incident_id}
+                                                        {selectedConversation.incident_count} incident{selectedConversation.incident_count !== 1 ? 's' : ''}
                                                     </span>
                                                 </div>
                                             </div>

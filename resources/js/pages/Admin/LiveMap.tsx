@@ -302,6 +302,11 @@ export default function LiveMap({
                         <strong>Location:</strong> ${incident.address || 'No address'}
                     </div>
                     ${incident.description ? `<div style="margin-top: 8px; font-size: 12px; color: #666;">${incident.description}</div>` : ''}
+                    <div style="margin-top: 12px;">
+                        <a href="/admin/incidents/${incident.id}/overview" style="display: block; text-align: center; padding: 8px 12px; background: #f1f5f9; color: #334155; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: 500;">
+                            View in Dashboard
+                        </a>
+                    </div>
                 </div>
             `;
 

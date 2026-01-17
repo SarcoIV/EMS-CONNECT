@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Incident;
 use App\Models\Message;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -28,51 +29,72 @@ class AdminMessageController extends Controller
     }
 
     /**
-     * Get all conversations (incidents with messages).
+     * Get all conversations grouped by user (not by incident).
+     * All messages from the same user across all their incidents are in one conversation.
      */
     public function getConversations(Request $request)
     {
         try {
-            // Get all incidents that have messages
-            $conversations = Incident::whereHas('messages')
+            // Get all users who have incidents with messages (community users)
+            $usersWithMessages = User::where('role', 'community')
+                ->whereHas('incidents', function ($query) {
+                    $query->whereHas('messages');
+                })
                 ->with([
-                    'user:id,name,email',
-                    'messages' => function ($query) {
-                        $query->latest()->limit(1); // Get last message
+                    'incidents' => function ($query) {
+                        $query->whereHas('messages')
+                            ->with(['messages' => function ($q) {
+                                $q->latest()->limit(1);
+                            }, 'messages.sender:id,name'])
+                            ->orderByDesc('updated_at');
                     },
-                    'messages.sender:id,name',
                 ])
-                ->withCount(['messages as unread_count' => function ($query) {
-                    $query->where('is_read', false)
-                        ->whereHas('sender', function ($q) {
-                            $q->where('role', 'community');
-                        });
-                }])
-                ->orderByDesc('updated_at')
-                ->get()
-                ->map(function ($incident) {
-                    $lastMessage = $incident->messages->first();
+                ->get();
 
-                    return [
-                        'id' => $incident->id,
-                        'incident_id' => $incident->id,
-                        'user' => [
-                            'id' => $incident->user->id,
-                            'name' => $incident->user->name,
-                            'email' => $incident->user->email,
-                        ],
-                        'incident_type' => $incident->type,
-                        'incident_status' => $incident->status,
-                        'last_message' => $lastMessage ? [
-                            'message' => $lastMessage->message,
-                            'image_url' => $lastMessage->image_url,
-                            'created_at' => $lastMessage->created_at->toIso8601String(),
-                            'sender_name' => $lastMessage->sender->name,
-                        ] : null,
-                        'unread_count' => $incident->unread_count,
-                        'updated_at' => $incident->updated_at->toIso8601String(),
-                    ];
-                });
+            $conversations = $usersWithMessages->map(function ($user) {
+                // Get the most recent incident with messages
+                $latestIncident = $user->incidents->first();
+
+                // Get the last message across ALL user's incidents
+                $lastMessage = Message::whereIn('incident_id', $user->incidents->pluck('id'))
+                    ->with('sender:id,name')
+                    ->latest()
+                    ->first();
+
+                // Count unread messages across ALL user's incidents
+                $unreadCount = Message::whereIn('incident_id', $user->incidents->pluck('id'))
+                    ->where('is_read', false)
+                    ->whereHas('sender', function ($q) {
+                        $q->where('role', 'community');
+                    })
+                    ->count();
+
+                // Get the latest updated_at from all incidents
+                $latestUpdate = $user->incidents->max('updated_at');
+
+                return [
+                    'id' => $user->id, // Use user ID as conversation ID
+                    'user_id' => $user->id,
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                    ],
+                    'incident_type' => $latestIncident?->type ?? 'other',
+                    'incident_status' => $latestIncident?->status ?? 'pending',
+                    'incident_count' => $user->incidents->count(),
+                    'last_message' => $lastMessage ? [
+                        'message' => $lastMessage->message,
+                        'image_url' => $lastMessage->image_url,
+                        'created_at' => $lastMessage->created_at->toIso8601String(),
+                        'sender_name' => $lastMessage->sender->name,
+                    ] : null,
+                    'unread_count' => $unreadCount,
+                    'updated_at' => $latestUpdate?->toIso8601String() ?? now()->toIso8601String(),
+                ];
+            })
+                ->sortByDesc('updated_at')
+                ->values();
 
             return response()->json([
                 'conversations' => $conversations,
@@ -80,6 +102,7 @@ class AdminMessageController extends Controller
         } catch (\Exception $e) {
             Log::error('[ADMIN MESSAGES] Failed to fetch conversations', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
@@ -90,40 +113,55 @@ class AdminMessageController extends Controller
     }
 
     /**
-     * Get messages for a specific incident.
+     * Get all messages for a specific user (across all their incidents).
      */
-    public function getMessages(Request $request, int $incidentId)
+    public function getMessages(Request $request, int $userId)
     {
         try {
-            $perPage = $request->input('per_page', 50);
+            $user = User::find($userId);
 
-            $incident = Incident::with('user:id,name,email')->find($incidentId);
-
-            if (! $incident) {
-                return response()->json(['message' => 'Incident not found'], 404);
+            if (! $user) {
+                return response()->json(['message' => 'User not found'], 404);
             }
 
-            $messages = Message::where('incident_id', $incidentId)
-                ->with('sender:id,name,role,user_role')
+            // Get all incident IDs for this user
+            $incidentIds = Incident::where('user_id', $userId)->pluck('id');
+
+            if ($incidentIds->isEmpty()) {
+                return response()->json([
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                    ],
+                    'messages' => [],
+                    'incidents' => [],
+                ]);
+            }
+
+            // Get all messages from all incidents for this user
+            $messages = Message::whereIn('incident_id', $incidentIds)
+                ->with(['sender:id,name,role,user_role', 'incident:id,type,status'])
                 ->orderBy('created_at', 'asc')
-                ->paginate($perPage);
+                ->get();
 
             $formattedMessages = $messages->map(fn ($msg) => $msg->toApiResponse());
 
+            // Get incident info for reference
+            $incidents = Incident::whereIn('id', $incidentIds)
+                ->select('id', 'type', 'status', 'created_at')
+                ->orderByDesc('created_at')
+                ->get();
+
             return response()->json([
-                'incident' => [
-                    'id' => $incident->id,
-                    'type' => $incident->type,
-                    'status' => $incident->status,
-                    'user' => $incident->user,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
                 ],
                 'messages' => $formattedMessages,
-                'pagination' => [
-                    'current_page' => $messages->currentPage(),
-                    'last_page' => $messages->lastPage(),
-                    'per_page' => $messages->perPage(),
-                    'total' => $messages->total(),
-                ],
+                'incidents' => $incidents,
+                'latest_incident_id' => $incidents->first()?->id,
             ]);
         } catch (\Exception $e) {
             Log::error('[ADMIN MESSAGES] Failed to fetch messages', [
@@ -138,17 +176,18 @@ class AdminMessageController extends Controller
     }
 
     /**
-     * Send a message from admin.
+     * Send a message from admin to a user.
+     * Attaches to the user's most recent active incident.
      */
     public function sendMessage(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'incident_id' => ['required', 'integer', 'exists:incidents,id'],
+            'user_id' => ['required', 'integer', 'exists:users,id'],
             'message' => ['nullable', 'string', 'max:2000'],
             'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png', 'max:5120'],
         ], [
-            'incident_id.required' => 'Incident ID is required.',
-            'incident_id.exists' => 'The specified incident does not exist.',
+            'user_id.required' => 'User ID is required.',
+            'user_id.exists' => 'The specified user does not exist.',
             'message.max' => 'Message cannot exceed 2000 characters.',
             'image.image' => 'The file must be an image.',
             'image.mimes' => 'Only JPEG, JPG, and PNG images are allowed.',
@@ -163,8 +202,8 @@ class AdminMessageController extends Controller
         }
 
         try {
-            $user = $request->user();
-            $incidentId = $request->incident_id;
+            $admin = $request->user();
+            $targetUserId = $request->user_id;
 
             // Require at least one content type
             if (empty($request->message) && ! $request->hasFile('image')) {
@@ -174,12 +213,24 @@ class AdminMessageController extends Controller
                 ], 422);
             }
 
+            // Find the user's most recent incident (prefer active ones)
+            $incident = Incident::where('user_id', $targetUserId)
+                ->orderByRaw("CASE WHEN status IN ('pending', 'dispatched') THEN 0 ELSE 1 END")
+                ->orderByDesc('created_at')
+                ->first();
+
+            if (! $incident) {
+                return response()->json([
+                    'message' => 'User has no incidents to send messages to.',
+                ], 404);
+            }
+
             // Handle image upload
             $imagePath = null;
             if ($request->hasFile('image')) {
                 $image = $request->file('image');
                 $filename = time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
-                $imagePath = $image->storeAs("messages/{$incidentId}", $filename, 'public');
+                $imagePath = $image->storeAs("messages/{$incident->id}", $filename, 'public');
 
                 if (! $imagePath) {
                     throw new \Exception('Failed to upload image');
@@ -188,8 +239,8 @@ class AdminMessageController extends Controller
 
             // Create message
             $message = Message::create([
-                'incident_id' => $incidentId,
-                'sender_id' => $user->id,
+                'incident_id' => $incident->id,
+                'sender_id' => $admin->id,
                 'message' => $request->message,
                 'image_path' => $imagePath,
                 'is_read' => false,
@@ -199,9 +250,10 @@ class AdminMessageController extends Controller
 
             Log::info('[ADMIN MESSAGES] 💬 Admin sent message', [
                 'message_id' => $message->id,
-                'incident_id' => $incidentId,
-                'admin_id' => $user->id,
-                'admin_name' => $user->name,
+                'incident_id' => $incident->id,
+                'target_user_id' => $targetUserId,
+                'admin_id' => $admin->id,
+                'admin_name' => $admin->name,
                 'has_text' => ! empty($request->message),
                 'has_image' => ! is_null($imagePath),
             ]);
@@ -230,16 +282,19 @@ class AdminMessageController extends Controller
     }
 
     /**
-     * Mark messages in a conversation as read.
+     * Mark all messages from a user as read (across all their incidents).
      */
-    public function markConversationAsRead(Request $request, int $incidentId)
+    public function markConversationAsRead(Request $request, int $userId)
     {
         try {
-            $user = $request->user();
+            $admin = $request->user();
 
-            // Mark all unread messages from community users in this incident as read
-            $updated = Message::where('incident_id', $incidentId)
-                ->where('sender_id', '!=', $user->id)
+            // Get all incident IDs for this user
+            $incidentIds = Incident::where('user_id', $userId)->pluck('id');
+
+            // Mark all unread messages from this user across all their incidents as read
+            $updated = Message::whereIn('incident_id', $incidentIds)
+                ->where('sender_id', '!=', $admin->id)
                 ->where('is_read', false)
                 ->whereHas('sender', function ($query) {
                     $query->where('role', 'community');
