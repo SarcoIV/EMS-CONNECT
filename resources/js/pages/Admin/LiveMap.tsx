@@ -849,7 +849,7 @@ export default function LiveMap({
                             
                             <div className="mt-3 flex gap-2">
                                 <a
-                                    href={`/admin/dashboard`}
+                                    href={`/admin/incidents/${selectedIncident.id}/overview`}
                                     className="flex-1 rounded-lg bg-slate-100 py-2 text-center text-xs font-medium text-slate-700 hover:bg-slate-200"
                                 >
                                     View in Dashboard
