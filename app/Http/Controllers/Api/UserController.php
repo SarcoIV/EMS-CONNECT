@@ -32,36 +32,15 @@ class UserController extends Controller
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
             'phone_number' => 'sometimes|string|max:20',
-            // Responder fields
             'badge_number' => 'sometimes|string|max:50',
             'hospital_assigned' => 'sometimes|string|max:255',
-            // Medical fields (for community users)
             'blood_type' => 'sometimes|string|max:10',
             'allergies' => 'sometimes|string|max:1000',
             'existing_conditions' => 'sometimes|string|max:1000',
             'medications' => 'sometimes|string|max:1000',
         ]);
 
-        // Filter fields based on user role
-        $allowedFields = ['name', 'first_name', 'last_name', 'phone_number'];
-
-        if ($user->isResponder()) {
-            // Responders can update badge_number and hospital_assigned
-            $allowedFields = array_merge($allowedFields, ['badge_number', 'hospital_assigned']);
-        } elseif ($user->isCommunity()) {
-            // Community users can update medical fields
-            $allowedFields = array_merge($allowedFields, [
-                'blood_type',
-                'allergies',
-                'existing_conditions',
-                'medications',
-            ]);
-        }
-
-        // Only update fields that are allowed for this user's role
-        $filteredData = array_intersect_key($validated, array_flip($allowedFields));
-
-        $user->update($filteredData);
+        $user->update($validated);
 
         return response()->json([
             'message' => 'Profile updated successfully',
