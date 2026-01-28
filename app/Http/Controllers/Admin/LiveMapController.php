@@ -8,6 +8,7 @@ use App\Models\Dispatch;
 use App\Models\Hospital;
 use App\Models\Incident;
 use App\Models\User;
+use App\Services\DistanceCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -220,9 +221,17 @@ class LiveMapController extends Controller
 
     /**
      * Get all active responders with their current locations.
+     * Only shows responders within 3km of any active incident.
      */
     private function getActiveResponders(): array
     {
+        // Get all active/pending incidents
+        $activeIncidents = Incident::whereIn('status', ['pending', 'dispatched'])
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        // Get all on-duty responders
         $responders = User::where('role', 'responder')
             ->where('is_on_duty', true)
             ->where(function ($query) {
@@ -235,7 +244,40 @@ class LiveMapController extends Controller
             })
             ->get();
 
-        return $responders->map(function ($responder) {
+        // Filter responders: only show those within 3km of any active incident
+        $maxRadiusMeters = 3000; // 3km
+        $respondersInRange = $responders->filter(function ($responder) use ($activeIncidents, $maxRadiusMeters) {
+            $responderLat = $responder->current_latitude ?? $responder->base_latitude;
+            $responderLon = $responder->current_longitude ?? $responder->base_longitude;
+
+            if (is_null($responderLat) || is_null($responderLon)) {
+                return false;
+            }
+
+            // Check if responder is within 3km of ANY active incident
+            foreach ($activeIncidents as $incident) {
+                $distance = DistanceCalculationService::calculateHaversineDistance(
+                    (float) $responderLat,
+                    (float) $responderLon,
+                    (float) $incident->latitude,
+                    (float) $incident->longitude
+                );
+
+                if ($distance <= $maxRadiusMeters) {
+                    return true; // Responder is within range of at least one incident
+                }
+            }
+
+            return false; // Not within range of any incident
+        });
+
+        Log::debug('[LIVEMAP] Filtered responders by 3km radius', [
+            'total_responders' => $responders->count(),
+            'responders_in_range' => $respondersInRange->count(),
+            'active_incidents' => $activeIncidents->count(),
+        ]);
+
+        return $respondersInRange->map(function ($responder) {
             return [
                 'id' => $responder->id,
                 'name' => $responder->name,
@@ -249,7 +291,7 @@ class LiveMapController extends Controller
                 'is_on_duty' => $responder->is_on_duty,
                 'location_updated_at' => $responder->location_updated_at?->toIso8601String(),
             ];
-        })->toArray();
+        })->values()->toArray();
     }
 
     /**

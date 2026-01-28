@@ -29,12 +29,16 @@ class DispatchService
 
     /**
      * Get available responders for an incident with calculated distances.
+     * Only responders within 3km radius are included.
      *
      * @param  Incident  $incident  The incident
      * @return Collection Collection of responders with distance data
      */
     public function getAvailableResponders(Incident $incident): Collection
     {
+        // Define maximum dispatch radius (3km = 3000 meters)
+        $maxRadiusMeters = 3000;
+
         // Get all available responders (on duty, idle, verified, with location)
         $responders = User::where('role', 'responder')
             ->where('email_verified', true)
@@ -59,13 +63,48 @@ class DispatchService
             return collect();
         }
 
-        Log::info('[DISPATCH] Found available responders', [
+        Log::info('[DISPATCH] Found available responders before radius filter', [
             'incident_id' => $incident->id,
             'responder_count' => $responders->count(),
         ]);
 
-        // Calculate distances for all responders
-        return $this->distanceService->calculateDistancesForResponders($incident, $responders);
+        // Filter responders by 3km radius using Haversine (straight-line distance)
+        $respondersInRadius = $responders->filter(function (User $responder) use ($incident, $maxRadiusMeters) {
+            $responderLat = $responder->current_latitude ?? $responder->base_latitude;
+            $responderLon = $responder->current_longitude ?? $responder->base_longitude;
+
+            if (is_null($responderLat) || is_null($responderLon)) {
+                return false;
+            }
+
+            $distance = DistanceCalculationService::calculateHaversineDistance(
+                (float) $responderLat,
+                (float) $responderLon,
+                (float) $incident->latitude,
+                (float) $incident->longitude
+            );
+
+            return $distance <= $maxRadiusMeters;
+        });
+
+        if ($respondersInRadius->isEmpty()) {
+            Log::warning('[DISPATCH] No responders found within 3km radius', [
+                'incident_id' => $incident->id,
+                'total_responders' => $responders->count(),
+                'radius_km' => 3,
+            ]);
+
+            return collect();
+        }
+
+        Log::info('[DISPATCH] Responders filtered by 3km radius', [
+            'incident_id' => $incident->id,
+            'before_filter' => $responders->count(),
+            'after_filter' => $respondersInRadius->count(),
+        ]);
+
+        // Calculate distances for responders within radius
+        return $this->distanceService->calculateDistancesForResponders($incident, $respondersInRadius);
     }
 
     /**

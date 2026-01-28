@@ -409,7 +409,7 @@ export default function People({
                                                             <div className="flex gap-1">
                                                                 <button
                                                                     onClick={() => handleViewUser(userData)}
-                                                                    className="rounded p-1.5 text-slate-500 hover:bg-slate-100"
+                                                                    className="rounded p-2 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-700 hover:shadow-sm"
                                                                     title="View details"
                                                                 >
                                                                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -420,13 +420,22 @@ export default function People({
                                                                 <button
                                                                     onClick={() => handleToggleStatus(userData.id)}
                                                                     disabled={isLoading}
-                                                                    className={`rounded px-2 py-1 text-xs font-medium ${
+                                                                    className={`rounded p-2 transition-all ${
                                                                         userData.email_verified
-                                                                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                                            : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                                                    }`}
+                                                                            ? 'text-red-600 hover:bg-red-50 hover:text-red-700 hover:shadow-sm'
+                                                                            : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-sm'
+                                                                    } disabled:opacity-50`}
+                                                                    title={userData.email_verified ? 'Deactivate user' : 'Activate user'}
                                                                 >
-                                                                    {userData.email_verified ? 'Deactivate' : 'Activate'}
+                                                                    {userData.email_verified ? (
+                                                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                        </svg>
+                                                                    ) : (
+                                                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                        </svg>
+                                                                    )}
                                                                 </button>
                                                             </div>
                                                         </td>
@@ -484,9 +493,12 @@ export default function People({
                                                                 <button
                                                                     onClick={() => handleRemoveAdmin(admin.id)}
                                                                     disabled={isLoading}
-                                                                    className="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-200 disabled:opacity-50"
+                                                                    className="rounded p-2 text-red-600 transition-all hover:bg-red-50 hover:text-red-700 hover:shadow-sm disabled:opacity-50"
+                                                                    title="Remove admin access"
                                                                 >
-                                                                    Remove Access
+                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                    </svg>
                                                                 </button>
                                                             )}
                                                         </td>
@@ -553,13 +565,22 @@ export default function People({
                                                             <button
                                                                 onClick={() => handleToggleResponderStatus(responder.id)}
                                                                 disabled={isLoading}
-                                                                className={`rounded px-2 py-1 text-xs font-medium ${
+                                                                className={`rounded p-2 transition-all ${
                                                                     responder.email_verified
-                                                                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                                        : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                                                }`}
+                                                                        ? 'text-red-600 hover:bg-red-50 hover:text-red-700 hover:shadow-sm'
+                                                                        : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-sm'
+                                                                } disabled:opacity-50`}
+                                                                title={responder.email_verified ? 'Deactivate responder' : 'Activate responder'}
                                                             >
-                                                                {responder.email_verified ? 'Deactivate' : 'Activate'}
+                                                                {responder.email_verified ? (
+                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                    </svg>
+                                                                ) : (
+                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                )}
                                                             </button>
                                                         </td>
                                                     </tr>

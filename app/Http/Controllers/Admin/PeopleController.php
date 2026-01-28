@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AdminAccountCreated;
+use App\Mail\ResponderAccountCreated;
 use App\Models\Incident;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 
@@ -217,6 +220,9 @@ class PeopleController extends Controller
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
+            // Store the plain password for email (before hashing)
+            $plainPassword = $validated['password'];
+
             $admin = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -231,8 +237,30 @@ class PeopleController extends Controller
                 'created_by' => $authUser->id,
             ]);
 
+            // Send welcome email with credentials
+            try {
+                Mail::to($admin->email)->send(
+                    new AdminAccountCreated(
+                        $admin->name,
+                        $admin->email,
+                        $plainPassword
+                    )
+                );
+
+                Log::info('[PEOPLE] Admin welcome email sent', [
+                    'admin_id' => $admin->id,
+                    'email' => $admin->email,
+                ]);
+            } catch (\Exception $mailError) {
+                // Log email failure but don't fail the account creation
+                Log::error('[PEOPLE] Failed to send admin welcome email', [
+                    'admin_id' => $admin->id,
+                    'error' => $mailError->getMessage(),
+                ]);
+            }
+
             return response()->json([
-                'message' => 'Admin account created successfully',
+                'message' => 'Admin account created successfully. Welcome email has been sent.',
                 'admin' => [
                     'id' => $admin->id,
                     'name' => $admin->name,
@@ -316,6 +344,9 @@ class PeopleController extends Controller
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
+            // Store the plain password for email (before hashing)
+            $plainPassword = $validated['password'];
+
             $responder = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -332,8 +363,30 @@ class PeopleController extends Controller
                 'created_by' => $authUser->id,
             ]);
 
+            // Send welcome email with credentials
+            try {
+                Mail::to($responder->email)->send(
+                    new ResponderAccountCreated(
+                        $responder->name,
+                        $responder->email,
+                        $plainPassword
+                    )
+                );
+
+                Log::info('[PEOPLE] Responder welcome email sent', [
+                    'responder_id' => $responder->id,
+                    'email' => $responder->email,
+                ]);
+            } catch (\Exception $mailError) {
+                // Log email failure but don't fail the account creation
+                Log::error('[PEOPLE] Failed to send responder welcome email', [
+                    'responder_id' => $responder->id,
+                    'error' => $mailError->getMessage(),
+                ]);
+            }
+
             return response()->json([
-                'message' => 'Responder account created successfully',
+                'message' => 'Responder account created successfully. Welcome email has been sent.',
                 'responder' => [
                     'id' => $responder->id,
                     'name' => $responder->name,

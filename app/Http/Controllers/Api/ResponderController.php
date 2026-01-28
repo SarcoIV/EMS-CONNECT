@@ -56,6 +56,7 @@ class ResponderController extends Controller
             $validated = $request->validate([
                 'latitude' => ['required', 'numeric', 'between:-90,90'],
                 'longitude' => ['required', 'numeric', 'between:-180,180'],
+                'accuracy' => ['nullable', 'numeric', 'min:0'], // GPS accuracy in meters
             ]);
 
             // Only update location if responder is on duty
@@ -232,9 +233,13 @@ class ResponderController extends Controller
     }
 
     /**
-     * Get all dispatches assigned to the responder.
+     * Get all dispatches assigned to the responder AND nearby incidents within 3km.
      *
      * GET /api/responder/dispatches
+     *
+     * Returns:
+     * - assigned_dispatches: Incidents already assigned to this responder
+     * - nearby_incidents: Pending incidents within 3km that could be accepted
      */
     public function getAssignedIncidents(Request $request)
     {
@@ -248,7 +253,16 @@ class ResponderController extends Controller
                 ], 403);
             }
 
-            // Get active dispatches for this responder
+            // Check if responder has current location
+            $hasLocation = $user->current_latitude && $user->current_longitude;
+
+            // Check if location is stale (> 5 minutes old)
+            $locationStale = false;
+            if ($hasLocation && $user->location_updated_at) {
+                $locationStale = $user->location_updated_at->diffInMinutes(now()) > 5;
+            }
+
+            // Get active dispatches already assigned to this responder
             $dispatches = Dispatch::with(['incident.user'])
                 ->where('responder_id', $user->id)
                 ->active()
@@ -328,18 +342,78 @@ class ResponderController extends Controller
                 ];
             });
 
-            Log::info('[RESPONDER] 📋 Fetched assigned dispatches', [
+            // Get nearby pending incidents within 3km (if location available and fresh)
+            $nearbyIncidentsData = [];
+
+            if ($hasLocation && ! $locationStale && $user->is_on_duty) {
+                $nearbyIncidents = $this->getNearbyPendingIncidents($user, 3000); // 3km = 3000m
+
+                $nearbyIncidentsData = $nearbyIncidents->map(function ($incident) use ($user) {
+                    // Check if already assigned to this responder
+                    $alreadyAssigned = $dispatches->contains(function ($dispatch) use ($incident) {
+                        return $dispatch->incident_id === $incident->id;
+                    });
+
+                    if ($alreadyAssigned) {
+                        return null; // Skip if already assigned
+                    }
+
+                    // Calculate current distance and route
+                    $routeData = $this->distanceService->calculateRoadDistance(
+                        (float) $user->current_latitude,
+                        (float) $user->current_longitude,
+                        (float) $incident->latitude,
+                        (float) $incident->longitude
+                    );
+
+                    return [
+                        'incident_id' => $incident->id,
+                        'type' => $incident->type,
+                        'status' => $incident->status,
+                        'distance_meters' => $routeData['distance_meters'],
+                        'distance_text' => $routeData['distance_text'],
+                        'estimated_duration_seconds' => $routeData['duration_seconds'],
+                        'duration_text' => $routeData['duration_text'],
+                        'latitude' => (float) $incident->latitude,
+                        'longitude' => (float) $incident->longitude,
+                        'address' => $incident->address,
+                        'description' => $incident->description,
+                        'created_at' => $incident->created_at->toIso8601String(),
+                        'can_accept' => true, // Responder can request to be assigned
+                        'reporter' => [
+                            'name' => $incident->user->name,
+                            'phone_number' => $incident->user->phone_number,
+                        ],
+                        'route' => [
+                            'coordinates' => $routeData['route_coordinates'],
+                            'method' => $routeData['method'],
+                        ],
+                    ];
+                })->filter()->values(); // Remove nulls and reindex
+            }
+
+            Log::info('[RESPONDER] 📋 Fetched dispatches and nearby incidents', [
                 'responder_id' => $user->id,
-                'dispatch_count' => $dispatches->count(),
+                'assigned_dispatch_count' => $dispatches->count(),
+                'nearby_incident_count' => $nearbyIncidentsData->count(),
+                'has_location' => $hasLocation,
+                'location_stale' => $locationStale,
             ]);
 
             return response()->json([
-                'dispatches' => $dispatchesData,
+                'assigned_dispatches' => $dispatchesData,
+                'nearby_incidents' => $nearbyIncidentsData,
                 'responder_location' => [
-                    'latitude' => (float) $user->current_latitude,
-                    'longitude' => (float) $user->current_longitude,
+                    'latitude' => $hasLocation ? (float) $user->current_latitude : null,
+                    'longitude' => $hasLocation ? (float) $user->current_longitude : null,
                     'updated_at' => $user->location_updated_at?->toIso8601String(),
+                    'is_stale' => $locationStale,
+                    'needs_update' => ! $hasLocation || $locationStale,
                 ],
+                'warnings' => array_filter([
+                    ! $hasLocation ? 'Location not set. Please enable GPS to see nearby incidents.' : null,
+                    $locationStale ? 'Location data is stale. Please update GPS to see accurate results.' : null,
+                ]),
             ]);
         } catch (\Exception $e) {
             Log::error('[RESPONDER] ❌ Failed to fetch dispatches', [
@@ -355,6 +429,45 @@ class ResponderController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
+    }
+
+    /**
+     * Get nearby pending incidents within specified radius.
+     *
+     * @param  User  $responder  The responder
+     * @param  int  $radiusMeters  Radius in meters (default 3000 = 3km)
+     * @return Collection Collection of nearby incidents
+     */
+    private function getNearbyPendingIncidents($responder, $radiusMeters = 3000)
+    {
+        // Get all pending/dispatched incidents with location
+        $incidents = \App\Models\Incident::with('user')
+            ->whereIn('status', ['pending', 'dispatched'])
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->get();
+
+        // Filter by radius using Haversine distance
+        $nearbyIncidents = $incidents->filter(function ($incident) use ($responder, $radiusMeters) {
+            $distance = DistanceCalculationService::calculateHaversineDistance(
+                (float) $responder->current_latitude,
+                (float) $responder->current_longitude,
+                (float) $incident->latitude,
+                (float) $incident->longitude
+            );
+
+            return $distance <= $radiusMeters;
+        });
+
+        // Sort by distance (nearest first)
+        return $nearbyIncidents->sortBy(function ($incident) use ($responder) {
+            return DistanceCalculationService::calculateHaversineDistance(
+                (float) $responder->current_latitude,
+                (float) $responder->current_longitude,
+                (float) $incident->latitude,
+                (float) $incident->longitude
+            );
+        });
     }
 
     /**

@@ -30,6 +30,7 @@ export default function UserEdit({ user }: UserEditProps) {
     const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [titleFilter, setTitleFilter] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Mock user data
     const [users, setUsers] = useState<UserData[]>([
@@ -121,9 +122,15 @@ export default function UserEdit({ user }: UserEditProps) {
         return 0;
     });
 
-    const filteredUsers = sortedUsers.filter((u) =>
-        u.name.toLowerCase().includes(titleFilter.toLowerCase())
-    );
+    const filteredUsers = sortedUsers.filter((u) => {
+        const matchesTitle = u.name.toLowerCase().includes(titleFilter.toLowerCase());
+        const matchesSearch = !searchTerm || (
+            u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            u.contactNumber.includes(searchTerm)
+        );
+        return matchesTitle && matchesSearch;
+    });
 
     const SortIcon = ({ columnKey }: { columnKey: string }) => {
         if (sortConfig?.key !== columnKey) return null;
@@ -152,11 +159,23 @@ export default function UserEdit({ user }: UserEditProps) {
 
                 <main className="flex-1 overflow-y-auto bg-gray-50 p-6 md:p-8">
                     <div className="mx-auto max-w-7xl">
-                        {/* Header with Count and Filter */}
+                        {/* Header with Count and Search */}
                         <div className="mb-6 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <h1 className="text-2xl font-bold text-gray-900">All ({users.length})</h1>
                                 <ChevronDown className="h-5 w-5 text-gray-500" />
+                            </div>
+                            <div className="relative w-80">
+                                <input
+                                    type="text"
+                                    placeholder="Search by name, email, or contact..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2 pl-10 text-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                                />
+                                <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
                             </div>
                         </div>
 
@@ -256,16 +275,25 @@ export default function UserEdit({ user }: UserEditProps) {
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <Button
+                                                        <button
                                                             onClick={() => handleToggleStatus(userData.id)}
-                                                            className={`h-8 px-4 text-xs font-semibold ${
+                                                            className={`rounded p-2 transition-all ${
                                                                 userData.isActive
-                                                                    ? 'bg-red-600 hover:bg-red-700 text-white'
-                                                                    : 'bg-green-600 hover:bg-green-700 text-white'
+                                                                    ? 'text-red-600 hover:bg-red-50 hover:text-red-700 hover:shadow-sm'
+                                                                    : 'text-green-600 hover:bg-green-50 hover:text-green-700 hover:shadow-sm'
                                                             }`}
+                                                            title={userData.isActive ? 'Deactivate user' : 'Activate user'}
                                                         >
-                                                            {userData.isActive ? 'DEACTIVATE' : 'ACTIVATE'}
-                                                        </Button>
+                                                            {userData.isActive ? (
+                                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                </svg>
+                                                            ) : (
+                                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                            )}
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -275,14 +303,21 @@ export default function UserEdit({ user }: UserEditProps) {
                             </CardContent>
                         </Card>
 
-                        {/* Selected Count Indicator */}
-                        {selectedUsers.size > 0 && (
-                            <div className="mt-4 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
-                                <p className="text-sm font-medium text-blue-900">
-                                    {selectedUsers.size} user{selectedUsers.size !== 1 ? 's' : ''} selected
+                        {/* Selected Count and Results Indicator */}
+                        <div className="mt-4 flex items-center justify-between">
+                            {selectedUsers.size > 0 && (
+                                <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
+                                    <p className="text-sm font-medium text-blue-900">
+                                        {selectedUsers.size} user{selectedUsers.size !== 1 ? 's' : ''} selected
+                                    </p>
+                                </div>
+                            )}
+                            {searchTerm && (
+                                <p className="text-sm text-gray-600">
+                                    Showing {filteredUsers.length} of {users.length} users
                                 </p>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </main>
             </div>

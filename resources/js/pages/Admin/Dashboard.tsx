@@ -109,8 +109,8 @@ interface DashboardProps {
 
 const POLL_INTERVAL = 10000; // Poll every 10 seconds
 
-export default function AdminDashboard({ 
-    user, 
+export default function AdminDashboard({
+    user,
     stats: initialStats,
     recentIncidents: initialIncidents,
     activeCalls: initialCalls,
@@ -125,6 +125,7 @@ export default function AdminDashboard({
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
     const [selectedDispatch, setSelectedDispatch] = useState<{dispatch: Dispatch, incident: Incident} | null>(null);
     const [trackingModalOpen, setTrackingModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Fetch real-time stats
     const fetchStats = useCallback(async () => {
@@ -237,12 +238,27 @@ export default function AdminDashboard({
         const date = new Date(dateString);
         const now = new Date();
         const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-        
+
         if (seconds < 60) return 'Just now';
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
         if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
         return date.toLocaleDateString();
     };
+
+    // Filter incidents based on search term
+    const filteredIncidents = recentIncidents.filter(incident => {
+        if (!searchTerm) return true;
+        const search = searchTerm.toLowerCase();
+        return (
+            incident.id.toString().includes(search) ||
+            incident.type.toLowerCase().includes(search) ||
+            incident.status.toLowerCase().includes(search) ||
+            incident.address?.toLowerCase().includes(search) ||
+            incident.user?.name?.toLowerCase().includes(search) ||
+            incident.user?.phone_number?.includes(search) ||
+            incident.user?.email?.toLowerCase().includes(search)
+        );
+    });
 
     return (
         <div className="flex h-screen bg-gradient-to-br from-slate-50 to-red-50/30">
@@ -491,13 +507,29 @@ export default function AdminDashboard({
                                         Latest emergency reports and their current status
                                     </p>
                                 </div>
-                                <a 
-                                    href="/admin/incident-reports" 
+                                <a
+                                    href="/admin/incident-reports"
                                     className="text-sm font-medium text-red-600 hover:text-red-700"
                                 >
                                     View all →
                                 </a>
                             </header>
+
+                            {/* Search Input */}
+                            <div className="mb-4">
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search by ID, type, status, location, or reporter..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full rounded-lg border border-slate-200 px-4 py-2 pl-10 text-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                                    />
+                                    <svg className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                            </div>
 
                             <div className="overflow-x-auto">
                                 <table className="min-w-full text-left text-sm">
@@ -513,8 +545,8 @@ export default function AdminDashboard({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y text-slate-700">
-                                        {recentIncidents.length > 0 ? (
-                                            recentIncidents.map((incident) => (
+                                        {filteredIncidents.length > 0 ? (
+                                            filteredIncidents.map((incident) => (
                                                 <tr key={incident.id} className="hover:bg-slate-50 transition">
                                                     <td className="px-4 py-3 font-mono text-xs text-slate-500">
                                                         #{incident.id.toString().padStart(4, '0')}
@@ -634,7 +666,7 @@ export default function AdminDashboard({
                                         ) : (
                                             <tr>
                                                 <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                                                    No incidents recorded yet
+                                                    {searchTerm ? 'No incidents match your search' : 'No incidents recorded yet'}
                                                 </td>
                                             </tr>
                                         )}

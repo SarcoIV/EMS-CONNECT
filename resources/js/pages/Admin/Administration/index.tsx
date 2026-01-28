@@ -27,6 +27,7 @@ interface EMSActivity {
 
 export default function Administration({ user }: AdministrationProps) {
     const [isMonitoringOpen, setIsMonitoringOpen] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Mock data for EMS activities
     const emsActivities: EMSActivity[] = [
@@ -74,6 +75,20 @@ export default function Administration({ user }: AdministrationProps) {
         }
         return <Badge className="bg-blue-100 text-blue-700 border-blue-200">In Progress</Badge>;
     };
+
+    // Filter EMS activities based on search term
+    const filteredActivities = emsActivities.filter(activity => {
+        if (!searchTerm) return true;
+        const search = searchTerm.toLowerCase();
+        return (
+            activity.date.toLowerCase().includes(search) ||
+            activity.location.toLowerCase().includes(search) ||
+            activity.incidentId.toLowerCase().includes(search) ||
+            activity.role.toLowerCase().includes(search) ||
+            activity.activity.toLowerCase().includes(search) ||
+            activity.status.toLowerCase().includes(search)
+        );
+    });
 
     return (
         <div className="flex h-screen bg-white">
@@ -172,6 +187,22 @@ export default function Administration({ user }: AdministrationProps) {
                                     </CollapsibleTrigger>
 
                                     <CollapsibleContent className="mt-4">
+                                        {/* Search Input */}
+                                        <div className="mb-4">
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search by date, location, incident ID, role, activity, or status..."
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    className="w-full rounded-lg border border-gray-200 px-4 py-2 pl-10 text-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-100"
+                                                />
+                                                <svg className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+
                                         <Card className="shadow-md">
                                             <CardContent className="p-0">
                                                 <div className="overflow-x-auto">
@@ -202,7 +233,8 @@ export default function Administration({ user }: AdministrationProps) {
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-gray-200 bg-white">
-                                                            {emsActivities.map((activity, index) => (
+                                                            {filteredActivities.length > 0 ? (
+                                                                filteredActivities.map((activity, index) => (
                                                                 <tr
                                                                     key={index}
                                                                     className="transition-colors hover:bg-gray-50"
@@ -233,7 +265,14 @@ export default function Administration({ user }: AdministrationProps) {
                                                                         {getStatusBadge(activity.status)}
                                                                     </td>
                                                                 </tr>
-                                                            ))}
+                                                                ))
+                                                            ) : (
+                                                                <tr>
+                                                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                                                                        {searchTerm ? 'No activities match your search' : 'No EMS activities found'}
+                                                                    </td>
+                                                                </tr>
+                                                            )}
                                                         </tbody>
                                                     </table>
                                                 </div>
