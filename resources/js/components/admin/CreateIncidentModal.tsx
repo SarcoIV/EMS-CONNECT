@@ -7,6 +7,7 @@ interface CreateIncidentModalProps {
     callerId: number;
     callerName: string;
     callId: number;
+    onIncidentCreated?: (incident: any) => void;
 }
 
 const INCIDENT_TYPES = [
@@ -24,6 +25,7 @@ export function CreateIncidentModal({
     callerId,
     callerName,
     callId,
+    onIncidentCreated,
 }: CreateIncidentModalProps) {
     const [formData, setFormData] = useState({
         type: 'medical',
@@ -32,11 +34,13 @@ export function CreateIncidentModal({
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         setError(null);
+        setSuccessMessage(null);
 
         try {
             const response = await axios.post('/admin/incidents/create', {
@@ -47,10 +51,24 @@ export function CreateIncidentModal({
                 description: formData.description,
             });
 
-            const incidentId = response.data.incident.id;
+            const incident = response.data.incident;
 
-            // Redirect to dispatch page
-            window.location.href = `/admin/dispatch/${incidentId}`;
+            console.log('[INCIDENT] ✅ Incident created successfully:', incident);
+
+            // Show success message
+            setSuccessMessage(`Incident #${incident.id} created successfully!`);
+
+            // Call the callback to update parent component
+            if (onIncidentCreated) {
+                onIncidentCreated(incident);
+            } else {
+                // Fallback: Redirect to dispatch page if no callback provided
+                setTimeout(() => {
+                    window.location.href = `/admin/dispatch/${incident.id}`;
+                }, 1500);
+            }
+
+            setIsSubmitting(false);
         } catch (err) {
             console.error('Failed to create incident:', err);
             const errorMessage =
@@ -155,6 +173,18 @@ export function CreateIncidentModal({
                         />
                     </div>
 
+                    {/* Success Message */}
+                    {successMessage && (
+                        <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+                            <p className="text-sm text-green-700 font-medium">
+                                ✅ {successMessage}
+                            </p>
+                            <p className="text-xs text-green-600 mt-1">
+                                You can now end the call and proceed to dispatch.
+                            </p>
+                        </div>
+                    )}
+
                     {/* Error Display */}
                     {error && (
                         <div className="rounded-lg bg-red-50 border border-red-200 p-3">
@@ -164,21 +194,33 @@ export function CreateIncidentModal({
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 rounded-lg border border-slate-300 py-2.5 font-medium text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
-                            disabled={isSubmitting}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="flex-1 rounded-lg bg-red-600 py-2.5 font-medium text-white hover:bg-red-700 transition disabled:opacity-50"
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? 'Creating...' : 'Create & Dispatch'}
-                        </button>
+                        {!successMessage ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 rounded-lg border border-slate-300 py-2.5 font-medium text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+                                    disabled={isSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 rounded-lg bg-red-600 py-2.5 font-medium text-white hover:bg-red-700 transition disabled:opacity-50"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? 'Creating...' : 'Save Incident Report'}
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white hover:bg-green-700 transition"
+                            >
+                                Close & Continue Call
+                            </button>
+                        )}
                     </div>
                 </form>
             </div>

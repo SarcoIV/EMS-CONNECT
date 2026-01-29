@@ -1,0 +1,58 @@
+========================================
+MOBILE APP - QUICK VERIFICATION CHECK
+========================================
+
+Copy this to your mobile app AI:
+
+---
+
+The backend now creates incidents during phone calls (admin fills form while talking to caller).
+
+Verify your mobile app displays ALL incident details correctly:
+
+1. CRITICAL CHECK - Description Field:
+   - Find where you display incident.description
+   - Verify it's NOT truncated with numberOfLines or .substring()
+   - MUST show complete text (100+ characters)
+
+2. Verify API Integration:
+   - Endpoint: GET /api/responder/dispatches
+   - Polling: Every 10-15 seconds
+   - Headers: Authorization: Bearer {token}
+
+3. Verify UI Displays:
+   ✓ Emergency type with icon (🏥 medical, 🔥 fire, etc.)
+   ✓ Full address (not truncated)
+   ✓ COMPLETE description (most important!)
+   ✓ Caller name
+   ✓ Caller phone with "Call" button
+   ✓ Distance and ETA
+   ✓ Route on map (polyline)
+
+4. Test This Scenario:
+   - Admin creates incident: "Elderly person collapsed, unresponsive, possible heart attack. Patient pale and sweating. CPR in progress."
+   - Admin assigns you
+   - Your app receives dispatch
+   - Check: Does FULL description show? (Not just "Elderly person collapsed...")
+
+5. Fix If Needed:
+
+   ❌ WRONG:
+   <Text numberOfLines={2}>{incident.description}</Text>
+
+   ✅ CORRECT:
+   <Text style={{flexWrap: 'wrap'}}>{incident.description}</Text>
+
+6. Verify Status Updates Work:
+   - Accept → POST /api/responder/dispatches/{id}/status with {status: "accepted"}
+   - En Route → {status: "en_route"}
+   - Arrived → {status: "arrived"}
+   - Completed → {status: "completed"}
+
+MOST IMPORTANT: Display the complete incident.description field without any truncation. This contains life-critical emergency details.
+
+Read full verification guide in MOBILE_APP_VERIFICATION_PROMPT.md for complete details.
+
+---
+
+NOW CHECK YOUR CODE AND CONFIRM ALL ITEMS ARE WORKING.
