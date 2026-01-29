@@ -28,7 +28,7 @@ class IncidentOverviewController extends Controller
                 $query->orderBy('assigned_at', 'asc');
             },
             'dispatches.responder:id,name,email,phone_number,responder_status,current_latitude,current_longitude,location_updated_at',
-            'dispatches.preArrivalForm',
+            'dispatches.preArrivalForms',
             'dispatches.assignedBy:id,name',
             'calls' => function ($query) {
                 $query->orderBy('started_at', 'desc');
@@ -96,15 +96,17 @@ class IncidentOverviewController extends Controller
                             'id' => $dispatch->assignedBy->id,
                             'name' => $dispatch->assignedBy->name,
                         ] : null,
-                        'pre_arrival_form' => $dispatch->preArrivalForm ? [
-                            'caller_name' => $dispatch->preArrivalForm->caller_name,
-                            'patient_name' => $dispatch->preArrivalForm->patient_name,
-                            'sex' => $dispatch->preArrivalForm->sex,
-                            'age' => $dispatch->preArrivalForm->age,
-                            'incident_type' => $dispatch->preArrivalForm->incident_type,
-                            'estimated_arrival' => $dispatch->preArrivalForm->estimated_arrival?->toIso8601String(),
-                            'submitted_at' => $dispatch->preArrivalForm->submitted_at?->toIso8601String(),
-                        ] : null,
+                        'pre_arrival_forms' => $dispatch->preArrivalForms->map(function ($form) {
+                            return [
+                                'caller_name' => $form->caller_name,
+                                'patient_name' => $form->patient_name,
+                                'sex' => $form->sex,
+                                'age' => $form->age,
+                                'incident_type' => $form->incident_type,
+                                'estimated_arrival' => $form->estimated_arrival?->toIso8601String(),
+                                'submitted_at' => $form->submitted_at?->toIso8601String(),
+                            ];
+                        })->toArray(),
                     ];
                 }),
                 'calls' => $incident->calls->map(function ($call) {

@@ -3,10 +3,10 @@
 namespace App\Events;
 
 use App\Models\Dispatch;
-use App\Models\PreArrivalForm;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
@@ -16,15 +16,15 @@ class PreArrivalFormSubmitted implements ShouldBroadcast
 
     public $dispatch;
 
-    public $preArrival;
+    public $preArrivalForms;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Dispatch $dispatch, PreArrivalForm $preArrival)
+    public function __construct(Dispatch $dispatch, Collection $preArrivalForms)
     {
         $this->dispatch = $dispatch;
-        $this->preArrival = $preArrival;
+        $this->preArrivalForms = $preArrivalForms;
     }
 
     /**
@@ -49,16 +49,19 @@ class PreArrivalFormSubmitted implements ShouldBroadcast
             'incident_id' => $this->dispatch->incident_id,
             'responder_id' => $this->dispatch->responder_id,
             'responder_name' => $this->dispatch->responder->name,
-            'pre_arrival' => [
-                'id' => $this->preArrival->id,
-                'caller_name' => $this->preArrival->caller_name,
-                'patient_name' => $this->preArrival->patient_name,
-                'sex' => $this->preArrival->sex,
-                'age' => $this->preArrival->age,
-                'incident_type' => $this->preArrival->incident_type,
-                'estimated_arrival' => $this->preArrival->estimated_arrival?->toIso8601String(),
-                'submitted_at' => $this->preArrival->submitted_at?->toIso8601String(),
-            ],
+            'patient_count' => $this->preArrivalForms->count(),
+            'patients' => $this->preArrivalForms->map(function ($form) {
+                return [
+                    'id' => $form->id,
+                    'caller_name' => $form->caller_name,
+                    'patient_name' => $form->patient_name,
+                    'sex' => $form->sex,
+                    'age' => $form->age,
+                    'incident_type' => $form->incident_type,
+                    'estimated_arrival' => $form->estimated_arrival?->toIso8601String(),
+                    'submitted_at' => $form->submitted_at?->toIso8601String(),
+                ];
+            })->toArray(),
         ];
     }
 }
