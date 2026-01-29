@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { Bell, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
+import { NotificationDropdown } from './NotificationDropdown';
 
 export function Header() {
     return (
@@ -15,10 +16,7 @@ export function Header() {
             {/* Right side actions */}
             <div className="flex items-center gap-2">
                 {/* Notifications */}
-                <Button variant="ghost" size="icon" className="relative h-9 w-9 text-slate-600 hover:text-slate-900">
-                    <Bell size={18} />
-                    <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-                </Button>
+                <NotificationDropdown />
             </div>
         </header>
     );

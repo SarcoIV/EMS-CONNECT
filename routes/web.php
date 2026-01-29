@@ -58,6 +58,7 @@ use App\Http\Controllers\Admin\CallsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DispatchController;
 use App\Http\Controllers\Admin\HospitalDirectoryController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\IncidentManagementController;
 use App\Http\Controllers\Admin\IncidentOverviewController;
 use App\Http\Controllers\Admin\IncidentReportsController;
@@ -95,6 +96,13 @@ Route::middleware([AdminMiddleware::class])->group(function () {
 
     // Administration
     Route::get('admin/administration', [AdministrationController::class, 'index'])->name('admin.administration');
+
+    // Notifications
+    Route::get('admin/notifications', [NotificationController::class, 'index'])->name('admin.notifications.index');
+    Route::get('admin/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('admin.notifications.unreadCount');
+    Route::patch('admin/notifications/{id}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('admin.notifications.markAsRead');
+    Route::post('admin/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('admin.notifications.markAllAsRead');
+    Route::delete('admin/notifications/{id}', [NotificationController::class, 'destroy'])->name('admin.notifications.destroy');
 
     // People
     Route::get('admin/people', [PeopleController::class, 'index'])->name('admin.people');

@@ -252,4 +252,20 @@ class User extends Authenticatable
             'address' => $this->base_address,
         ];
     }
+
+    /**
+     * Get notifications for this user
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Get unread notifications count
+     */
+    public function unreadNotificationsCount(): int
+    {
+        return $this->notifications()->unread()->count();
+    }
 }
