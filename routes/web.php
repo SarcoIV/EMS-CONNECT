@@ -58,6 +58,7 @@ use App\Http\Controllers\Admin\CallsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DispatchController;
 use App\Http\Controllers\Admin\HospitalDirectoryController;
+use App\Http\Controllers\Admin\IncidentManagementController;
 use App\Http\Controllers\Admin\IncidentOverviewController;
 use App\Http\Controllers\Admin\IncidentReportsController;
 use App\Http\Controllers\Admin\LiveMapController;
@@ -135,6 +136,9 @@ Route::middleware([AdminMiddleware::class])->group(function () {
         Route::post('initiate', [CallsController::class, 'initiateCall'])->name('admin.calls.initiate');
         Route::get('{id}/status', [CallsController::class, 'getCallStatus'])->name('admin.calls.status');
     });
+
+    // Admin incident creation (during calls)
+    Route::post('admin/incidents/create', [IncidentManagementController::class, 'store'])->name('admin.incidents.create');
 });
 
 /*

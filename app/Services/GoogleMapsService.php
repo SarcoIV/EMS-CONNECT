@@ -272,4 +272,64 @@ class GoogleMapsService
 
         return number_format($hours, 0).' hr '.number_format($remainingMinutes, 0).' min';
     }
+
+    /**
+     * Geocode an address to latitude/longitude coordinates.
+     *
+     * @param  string  $address  Human-readable address
+     * @return array ['latitude' => float, 'longitude' => float, 'formatted_address' => string]
+     *
+     * @throws \Exception If geocoding fails
+     */
+    public function geocodeAddress(string $address): array
+    {
+        if (empty($this->apiKey)) {
+            throw new \Exception('Google Maps API key not configured');
+        }
+
+        // Check cache first
+        $cacheKey = 'geocode_'.md5($address);
+        $cached = Cache::get($cacheKey);
+        if ($cached) {
+            Log::debug('[GOOGLE_MAPS] Using cached geocode', ['address' => $address]);
+
+            return $cached;
+        }
+
+        $url = "{$this->baseUrl}/geocode/json";
+
+        $response = Http::timeout(10)->get($url, [
+            'address' => $address,
+            'key' => $this->apiKey,
+        ]);
+
+        if (! $response->successful()) {
+            throw new \Exception("Geocoding API error: {$response->status()}");
+        }
+
+        $data = $response->json();
+
+        if ($data['status'] !== 'OK' || empty($data['results'])) {
+            throw new \Exception("Could not geocode address: {$data['status']}");
+        }
+
+        $result = $data['results'][0];
+        $location = $result['geometry']['location'];
+
+        $geocoded = [
+            'latitude' => $location['lat'],
+            'longitude' => $location['lng'],
+            'formatted_address' => $result['formatted_address'],
+        ];
+
+        // Cache for 24 hours (addresses don't change often)
+        Cache::put($cacheKey, $geocoded, 86400);
+
+        Log::info('[GOOGLE_MAPS] Address geocoded successfully', [
+            'input' => $address,
+            'output' => $geocoded,
+        ]);
+
+        return $geocoded;
+    }
 }

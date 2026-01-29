@@ -6,6 +6,7 @@ import AgoraRTC, {
     IMicrophoneAudioTrack,
 } from 'agora-rtc-sdk-ng';
 import axios from 'axios';
+import { CreateIncidentModal } from './CreateIncidentModal';
 
 interface Caller {
     id: number;
@@ -40,6 +41,7 @@ export function IncomingCallNotification() {
     const [isMuted, setIsMuted] = useState(false);
     const [callDuration, setCallDuration] = useState(0);
     const [isJoining, setIsJoining] = useState(false);
+    const [showCreateIncidentModal, setShowCreateIncidentModal] = useState(false);
 
     const agoraClient = useRef<IAgoraRTCClient | null>(null);
     const localAudioTrack = useRef<IMicrophoneAudioTrack | null>(null);
@@ -344,23 +346,65 @@ export function IncomingCallNotification() {
                         </div>
 
                         {isInCall && (
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={handleToggleMute}
-                                    className="flex-1 rounded-lg bg-white/20 py-3 text-sm font-bold backdrop-blur-sm hover:bg-white/30"
-                                >
-                                    {isMuted ? '🔇 Unmute' : '🔊 Mute'}
-                                </button>
-                                <button
-                                    onClick={handleEndCall}
-                                    className="flex-1 rounded-lg bg-red-900 py-3 text-sm font-bold hover:bg-red-950"
-                                >
-                                    ✕ End Call
-                                </button>
-                            </div>
+                            <>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={handleToggleMute}
+                                        className="flex-1 rounded-lg bg-white/20 py-3 text-sm font-bold backdrop-blur-sm hover:bg-white/30"
+                                    >
+                                        {isMuted ? '🔇 Unmute' : '🔊 Mute'}
+                                    </button>
+                                    <button
+                                        onClick={handleEndCall}
+                                        className="flex-1 rounded-lg bg-red-900 py-3 text-sm font-bold hover:bg-red-950"
+                                    >
+                                        ✕ End Call
+                                    </button>
+                                </div>
+
+                                {/* Create Incident Button (only if no incident linked) */}
+                                {!activeCall.incident_id && (
+                                    <button
+                                        onClick={() => setShowCreateIncidentModal(true)}
+                                        className="mt-3 w-full rounded-lg bg-yellow-500 py-3 text-sm font-bold text-white hover:bg-yellow-600 transition shadow-lg"
+                                    >
+                                        📝 Create Incident Report
+                                    </button>
+                                )}
+
+                                {/* Show incident info if already linked */}
+                                {activeCall.incident && (
+                                    <div className="mt-3 rounded-lg bg-white/20 backdrop-blur-sm p-3 text-sm">
+                                        <p className="text-xs opacity-75 mb-1">
+                                            Linked Incident:
+                                        </p>
+                                        <p className="font-semibold">
+                                            #{activeCall.incident.id} -{' '}
+                                            {activeCall.incident.type.toUpperCase()}
+                                        </p>
+                                        <a
+                                            href={`/admin/dispatch/${activeCall.incident.id}`}
+                                            className="text-xs underline hover:text-yellow-200 mt-1 inline-block"
+                                        >
+                                            View Dispatch →
+                                        </a>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
+            )}
+
+            {/* Create Incident Modal */}
+            {activeCall && (
+                <CreateIncidentModal
+                    isOpen={showCreateIncidentModal}
+                    onClose={() => setShowCreateIncidentModal(false)}
+                    callerId={activeCall.caller.id}
+                    callerName={activeCall.caller.name}
+                    callId={activeCall.id}
+                />
             )}
         </>
     );
