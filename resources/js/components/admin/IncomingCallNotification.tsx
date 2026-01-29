@@ -155,6 +155,14 @@ export function IncomingCallNotification() {
         };
     }, [isInCall]);
 
+    // Close incident form when call ends (from either side)
+    useEffect(() => {
+        if (!activeCall && showCreateIncidentModal) {
+            console.log('[CALLS] 📝 Closing incident form - call ended');
+            setShowCreateIncidentModal(false);
+        }
+    }, [activeCall, showCreateIncidentModal]);
+
     // Answer call
     const handleAnswerCall = async (call: IncomingCall) => {
         try {
@@ -238,6 +246,7 @@ export function IncomingCallNotification() {
             setActiveCall(null);
             setIsMuted(false);
             setCallDuration(0);
+            setShowCreateIncidentModal(false); // Close incident form when call ends
         }
     };
 
