@@ -92,40 +92,44 @@ export function CreateIncidentModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl animate-in zoom-in-95 duration-300">
                 {/* Header */}
-                <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-slate-800">
+                <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-slate-900">
                         Create Emergency Report
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 transition"
+                        className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
                         disabled={isSubmitting}
                     >
-                        ✕
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </div>
 
                 {/* Caller Info */}
-                <div className="mb-4 rounded-lg bg-blue-50 border border-blue-200 p-3">
-                    <p className="text-sm text-blue-800">
+                <div className="mb-5 rounded-xl bg-gradient-to-r from-blue-50 to-blue-100/50 border border-blue-200 p-4">
+                    <p className="text-sm text-blue-900">
                         Creating report for:{' '}
-                        <span className="font-semibold">{callerName}</span>
+                        <span className="font-bold">{callerName}</span>
                     </p>
                 </div>
 
                 {/* Warning Banner - Existing Incident */}
                 {existingIncident && (
-                    <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
-                        <div className="flex items-start gap-2">
-                            <span className="text-yellow-600 text-lg">⚠️</span>
+                    <div className="mb-5 rounded-xl bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-300 p-4 shadow-sm">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-200">
+                                <span className="text-lg">⚠️</span>
+                            </div>
                             <div className="flex-1">
-                                <p className="text-sm font-semibold text-yellow-800">
+                                <p className="text-sm font-bold text-yellow-900">
                                     Incident #{existingIncident.id} Already Linked
                                 </p>
-                                <p className="text-xs text-yellow-700 mt-1">
+                                <p className="text-xs text-yellow-800 mt-1">
                                     Creating a new incident will replace the existing one.
                                 </p>
                             </div>
@@ -134,10 +138,10 @@ export function CreateIncidentModal({
                 )}
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Emergency Type */}
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                        <label className="mb-2 block text-sm font-semibold text-slate-900">
                             Emergency Type *
                         </label>
                         <select
@@ -145,7 +149,7 @@ export function CreateIncidentModal({
                             onChange={(e) =>
                                 setFormData({ ...formData, type: e.target.value })
                             }
-                            className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                            className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-slate-900 transition-all focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-500/10 disabled:bg-slate-50 disabled:cursor-not-allowed"
                             required
                             disabled={isSubmitting}
                         >
@@ -159,7 +163,7 @@ export function CreateIncidentModal({
 
                     {/* Address */}
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                        <label className="mb-2 block text-sm font-semibold text-slate-900">
                             Location / Address *
                         </label>
                         <input
@@ -169,18 +173,18 @@ export function CreateIncidentModal({
                                 setFormData({ ...formData, address: e.target.value })
                             }
                             placeholder="Enter street address, landmark, or area"
-                            className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                            className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-slate-900 placeholder:text-slate-400 transition-all focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-500/10 disabled:bg-slate-50 disabled:cursor-not-allowed"
                             required
                             disabled={isSubmitting}
                         />
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-2 text-xs text-slate-500">
                             Ask caller for specific address or nearby landmark
                         </p>
                     </div>
 
                     {/* Description */}
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700">
+                        <label className="mb-2 block text-sm font-semibold text-slate-900">
                             Description *
                         </label>
                         <textarea
@@ -193,7 +197,7 @@ export function CreateIncidentModal({
                             }
                             placeholder="Describe the emergency situation in detail..."
                             rows={4}
-                            className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                            className="w-full rounded-xl border-2 border-slate-200 px-4 py-3 text-slate-900 placeholder:text-slate-400 transition-all focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-500/10 disabled:bg-slate-50 disabled:cursor-not-allowed resize-none"
                             required
                             disabled={isSubmitting}
                         />
@@ -201,48 +205,70 @@ export function CreateIncidentModal({
 
                     {/* Success Message */}
                     {successMessage && (
-                        <div className="rounded-lg bg-green-50 border border-green-200 p-3">
-                            <p className="text-sm text-green-700 font-medium">
-                                ✅ {successMessage}
-                            </p>
-                            <p className="text-xs text-green-600 mt-1">
-                                You can now end the call and proceed to dispatch.
-                            </p>
+                        <div className="rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 p-4 shadow-sm">
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-200">
+                                    <span className="text-lg">✅</span>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold text-green-900">
+                                        {successMessage}
+                                    </p>
+                                    <p className="text-xs text-green-800 mt-1">
+                                        You can now end the call and proceed to dispatch.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     )}
 
                     {/* Error Display */}
                     {error && (
-                        <div className="rounded-lg bg-red-50 border border-red-200 p-3">
-                            <p className="text-sm text-red-700">{error}</p>
+                        <div className="rounded-xl bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 p-4 shadow-sm">
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-200">
+                                    <span className="text-lg">❌</span>
+                                </div>
+                                <p className="flex-1 text-sm font-medium text-red-900">{error}</p>
+                            </div>
                         </div>
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-3 pt-2">
+                    <div className="flex gap-3 pt-3">
                         {!successMessage ? (
                             <>
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="flex-1 rounded-lg border border-slate-300 py-2.5 font-medium text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+                                    className="flex-1 rounded-xl border-2 border-slate-300 py-3 font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                     disabled={isSubmitting}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 rounded-lg bg-red-600 py-2.5 font-medium text-white hover:bg-red-700 transition disabled:opacity-50"
+                                    className="flex-1 rounded-xl bg-gradient-to-r from-red-600 to-red-700 py-3 font-semibold text-white hover:from-red-700 hover:to-red-800 transition-all shadow-lg shadow-red-500/30 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                     disabled={isSubmitting}
                                 >
-                                    {isSubmitting ? 'Creating...' : 'Save Incident Report'}
+                                    {isSubmitting ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            Creating...
+                                        </span>
+                                    ) : (
+                                        'Save Incident Report'
+                                    )}
                                 </button>
                             </>
                         ) : (
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="w-full rounded-lg bg-green-600 py-2.5 font-medium text-white hover:bg-green-700 transition"
+                                className="w-full rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 py-3 font-semibold text-white hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg shadow-green-500/30 active:scale-95"
                             >
                                 Close & Continue Call
                             </button>

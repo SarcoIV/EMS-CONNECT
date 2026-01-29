@@ -316,88 +316,138 @@ export function IncomingCallNotification() {
 
             {/* Active Call Modal */}
             {(isInCall || isJoining) && activeCall && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-                    <div className="w-96 rounded-2xl bg-gradient-to-b from-red-600 to-red-700 p-8 text-white shadow-2xl">
-                        <div className="mb-6 text-center">
-                            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/20">
-                                <svg
-                                    className="h-10 w-10"
-                                    fill="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z" />
-                                </svg>
-                            </div>
+                <>
+                    {/* Compact Call Widget (shown when incident form is open) */}
+                    {showCreateIncidentModal ? (
+                        <div className="fixed right-6 top-6 z-[70] w-80 animate-in fade-in slide-in-from-top-5 duration-300">
+                            <div className="rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-800 p-5 text-white shadow-2xl border border-red-500/20">
+                                {/* Header */}
+                                <div className="mb-4 flex items-center gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+                                        <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2 w-2 animate-pulse rounded-full bg-green-400"></div>
+                                            <p className="text-xs font-medium uppercase tracking-wider opacity-90">
+                                                Active Call
+                                            </p>
+                                        </div>
+                                        <p className="mt-0.5 text-lg font-bold">{formatDuration(callDuration)}</p>
+                                    </div>
+                                </div>
 
-                            {isJoining ? (
-                                <>
-                                    <h2 className="mb-2 text-2xl font-bold">Connecting...</h2>
-                                    <p className="text-sm opacity-90">Please wait</p>
-                                </>
-                            ) : (
-                                <>
-                                    <h2 className="mb-2 text-2xl font-bold">In Call</h2>
-                                    <p className="mb-4 text-4xl font-bold">{formatDuration(callDuration)}</p>
-                                    <p className="text-lg font-semibold">{activeCall.caller.name}</p>
-                                    <p className="text-sm opacity-90">{activeCall.caller.email}</p>
-                                    {activeCall.incident && (
-                                        <p className="mt-2 text-xs opacity-75">
-                                            Emergency Type: {activeCall.incident.type.toUpperCase()}
-                                        </p>
-                                    )}
-                                </>
-                            )}
-                        </div>
+                                {/* Caller Info */}
+                                <div className="mb-4 rounded-xl bg-white/10 backdrop-blur-sm p-3">
+                                    <p className="text-sm font-semibold">{activeCall.caller.name}</p>
+                                    <p className="text-xs opacity-75">{activeCall.caller.email}</p>
+                                </div>
 
-                        {isInCall && (
-                            <>
-                                <div className="flex gap-3">
+                                {/* Controls */}
+                                <div className="flex gap-2">
                                     <button
                                         onClick={handleToggleMute}
-                                        className="flex-1 rounded-lg bg-white/20 py-3 text-sm font-bold backdrop-blur-sm hover:bg-white/30"
+                                        className="flex-1 rounded-lg bg-white/15 py-2.5 text-sm font-semibold backdrop-blur-sm hover:bg-white/25 transition-all active:scale-95"
                                     >
                                         {isMuted ? '🔇 Unmute' : '🔊 Mute'}
                                     </button>
                                     <button
                                         onClick={handleEndCall}
-                                        className="flex-1 rounded-lg bg-red-900 py-3 text-sm font-bold hover:bg-red-950"
+                                        className="flex-1 rounded-lg bg-red-900/80 py-2.5 text-sm font-semibold hover:bg-red-950 transition-all active:scale-95"
                                     >
                                         ✕ End Call
                                     </button>
                                 </div>
-
-                                {/* Create Incident Button (only if no incident linked) */}
-                                {!activeCall.incident_id && (
-                                    <button
-                                        onClick={() => setShowCreateIncidentModal(true)}
-                                        className="mt-3 w-full rounded-lg bg-yellow-500 py-3 text-sm font-bold text-white hover:bg-yellow-600 transition shadow-lg"
-                                    >
-                                        📝 Create Incident Report
-                                    </button>
-                                )}
-
-                                {/* Show incident info if already linked */}
-                                {activeCall.incident && (
-                                    <div className="mt-3 rounded-lg bg-white/20 backdrop-blur-sm p-3 text-sm">
-                                        <p className="text-xs opacity-75 mb-1">
-                                            Linked Incident:
-                                        </p>
-                                        <p className="font-semibold">
-                                            #{activeCall.incident.id} -{' '}
-                                            {activeCall.incident.type.toUpperCase()}
-                                        </p>
-                                        <a
-                                            href={`/admin/dispatch/${activeCall.incident.id}`}
-                                            className="text-xs underline hover:text-yellow-200 mt-1 inline-block"
+                            </div>
+                        </div>
+                    ) : (
+                        /* Full-Screen Call Modal (shown when incident form is closed) */
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                            <div className="w-96 rounded-2xl bg-gradient-to-b from-red-600 to-red-700 p-8 text-white shadow-2xl">
+                                <div className="mb-6 text-center">
+                                    <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/20">
+                                        <svg
+                                            className="h-10 w-10"
+                                            fill="currentColor"
+                                            viewBox="0 0 24 24"
                                         >
-                                            View Dispatch →
-                                        </a>
+                                            <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z" />
+                                        </svg>
                                     </div>
+
+                                    {isJoining ? (
+                                        <>
+                                            <h2 className="mb-2 text-2xl font-bold">Connecting...</h2>
+                                            <p className="text-sm opacity-90">Please wait</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h2 className="mb-2 text-2xl font-bold">In Call</h2>
+                                            <p className="mb-4 text-4xl font-bold">{formatDuration(callDuration)}</p>
+                                            <p className="text-lg font-semibold">{activeCall.caller.name}</p>
+                                            <p className="text-sm opacity-90">{activeCall.caller.email}</p>
+                                            {activeCall.incident && (
+                                                <p className="mt-2 text-xs opacity-75">
+                                                    Emergency Type: {activeCall.incident.type.toUpperCase()}
+                                                </p>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                {isInCall && (
+                                    <>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={handleToggleMute}
+                                                className="flex-1 rounded-lg bg-white/20 py-3 text-sm font-bold backdrop-blur-sm hover:bg-white/30"
+                                            >
+                                                {isMuted ? '🔇 Unmute' : '🔊 Mute'}
+                                            </button>
+                                            <button
+                                                onClick={handleEndCall}
+                                                className="flex-1 rounded-lg bg-red-900 py-3 text-sm font-bold hover:bg-red-950"
+                                            >
+                                                ✕ End Call
+                                            </button>
+                                        </div>
+
+                                        {/* Create Incident Button (only if no incident linked) */}
+                                        {!activeCall.incident_id && (
+                                            <button
+                                                onClick={() => setShowCreateIncidentModal(true)}
+                                                className="mt-3 w-full rounded-lg bg-yellow-500 py-3 text-sm font-bold text-white hover:bg-yellow-600 transition shadow-lg"
+                                            >
+                                                📝 Create Incident Report
+                                            </button>
+                                        )}
+
+                                        {/* Show incident info if already linked */}
+                                        {activeCall.incident && (
+                                            <div className="mt-3 rounded-lg bg-white/20 backdrop-blur-sm p-3 text-sm">
+                                                <p className="text-xs opacity-75 mb-1">
+                                                    Linked Incident:
+                                                </p>
+                                                <p className="font-semibold">
+                                                    #{activeCall.incident.id} -{' '}
+                                                    {activeCall.incident.type.toUpperCase()}
+                                                </p>
+                                                <a
+                                                    href={`/admin/dispatch/${activeCall.incident.id}`}
+                                                    className="text-xs underline hover:text-yellow-200 mt-1 inline-block"
+                                                >
+                                                    View Dispatch →
+                                                </a>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
-                            </>
-                        )}
-                    </div>
-                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Create Incident Modal */}
