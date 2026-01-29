@@ -41,6 +41,9 @@ class LiveMapController extends Controller
         // Get focused incident if specified
         $focusedIncidentId = $request->query('incident');
 
+        // Get focused hospital if specified
+        $focusedHospitalId = $request->query('hospital');
+
         return Inertia::render('Admin/LiveMap', [
             'user' => [
                 'name' => $user->name,
@@ -52,6 +55,7 @@ class LiveMapController extends Controller
             'activeResponders' => $activeResponders,
             'hospitals' => $hospitals,
             'focusedIncidentId' => $focusedIncidentId ? (int) $focusedIncidentId : null,
+            'focusedHospitalId' => $focusedHospitalId ? (int) $focusedHospitalId : null,
         ]);
     }
 

@@ -11,8 +11,17 @@ interface User {
     email: string;
 }
 
+interface Stats {
+    totalAvailability: number;
+    activeResponders: number;
+    totalResponders: number;
+    totalActiveUnits: number;
+}
+
 interface AdministrationProps {
     user: User;
+    stats: Stats;
+    emsActivities: EMSActivity[];
 }
 
 interface EMSActivity {
@@ -25,49 +34,9 @@ interface EMSActivity {
     status: string;
 }
 
-export default function Administration({ user }: AdministrationProps) {
+export default function Administration({ user, stats, emsActivities }: AdministrationProps) {
     const [isMonitoringOpen, setIsMonitoringOpen] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Mock data for EMS activities
-    const emsActivities: EMSActivity[] = [
-        {
-            date: '2023-06-15',
-            location: '62-68 Rd 1, Quezon City, Metro Manila',
-            incidentId: 'INC123456',
-            role: 'EMT',
-            activity: 'Responded to chest pain',
-            hours: '2.5',
-            status: 'Completed',
-        },
-        {
-            date: '2023-06-16',
-            location: '3 Alley 13 Project 6',
-            incidentId: 'INC123457',
-            role: 'Paramedic',
-            activity: 'Administered CPR and transported',
-            hours: '3.0',
-            status: 'Completed',
-        },
-        {
-            date: '2023-06-17',
-            location: 'SM City North EDSA, Quezon City',
-            incidentId: 'INC123458',
-            role: 'EMT',
-            activity: 'First aid for minor injury',
-            hours: '1.5',
-            status: 'In Progress',
-        },
-        {
-            date: '2023-06-18',
-            location: 'Quezon Memorial Circle',
-            incidentId: 'INC123459',
-            role: 'Paramedic',
-            activity: 'Emergency response to accident scene',
-            hours: '4.0',
-            status: 'Completed',
-        },
-    ];
 
     const getStatusBadge = (status: string) => {
         if (status === 'Completed') {
@@ -118,10 +87,10 @@ export default function Administration({ user }: AdministrationProps) {
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium text-gray-600">Total Availability</p>
-                                                <p className="mt-2 text-4xl font-bold text-gray-900">21.90</p>
+                                                <p className="mt-2 text-4xl font-bold text-gray-900">{stats.totalAvailability}</p>
                                                 <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
                                                     <CheckCircle2 className="h-4 w-4" />
-                                                    <span className="font-medium">See details</span>
+                                                    <span className="font-medium">Available responders</span>
                                                 </div>
                                             </div>
                                             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
@@ -138,13 +107,13 @@ export default function Administration({ user }: AdministrationProps) {
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium text-gray-600">Live status of units</p>
                                                 <p className="mt-2 text-4xl font-bold text-gray-900">
-                                                    <span className="text-green-600">1</span>
+                                                    <span className="text-green-600">{stats.activeResponders}</span>
                                                     <span className="text-gray-400">/</span>
-                                                    <span className="text-gray-700">1,171,347</span>
+                                                    <span className="text-gray-700">{stats.totalResponders}</span>
                                                 </p>
                                                 <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
                                                     <CheckCircle2 className="h-4 w-4" />
-                                                    <span className="font-medium">Details pending</span>
+                                                    <span className="font-medium">Active / Total responders</span>
                                                 </div>
                                             </div>
                                             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
@@ -160,10 +129,10 @@ export default function Administration({ user }: AdministrationProps) {
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium text-gray-600">Total Active Units</p>
-                                                <p className="mt-2 text-4xl font-bold text-gray-900">41.30</p>
+                                                <p className="mt-2 text-4xl font-bold text-gray-900">{stats.totalActiveUnits}</p>
                                                 <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
                                                     <CheckCircle2 className="h-4 w-4" />
-                                                    <span className="font-medium">Real-time details</span>
+                                                    <span className="font-medium">Active dispatches</span>
                                                 </div>
                                             </div>
                                             <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">

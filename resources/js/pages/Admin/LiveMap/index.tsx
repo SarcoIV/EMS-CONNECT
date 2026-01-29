@@ -96,6 +96,7 @@ interface LiveMapProps {
     activeCalls?: ActiveCall[];
     hospitals?: Hospital[];
     focusedIncidentId?: number;
+    focusedHospitalId?: number;
 }
 
 const POLL_INTERVAL = 5000; // Poll every 5 seconds
@@ -124,7 +125,8 @@ export default function LiveMap({
     incidents: initialIncidents = [],
     activeCalls: initialCalls = [],
     hospitals: initialHospitals = [],
-    focusedIncidentId
+    focusedIncidentId,
+    focusedHospitalId
 }: LiveMapProps) {
     const [incidents, setIncidents] = useState<Incident[]>(initialIncidents);
     const [activeCalls, setActiveCalls] = useState<ActiveCall[]>(initialCalls);
@@ -268,6 +270,26 @@ export default function LiveMap({
                     if (focused && focused.latitude && focused.longitude) {
                         mapRef.current.setView([focused.latitude, focused.longitude], 16);
                         setSelectedIncident(focused);
+                    }
+                }
+
+                // Focus on specific hospital if provided
+                if (focusedHospitalId && !focusedIncidentId) {
+                    const focusedHospital = initialHospitals.find(h => h.id === focusedHospitalId);
+                    if (focusedHospital && focusedHospital.latitude && focusedHospital.longitude) {
+                        // Center map on hospital
+                        mapRef.current.setView([focusedHospital.latitude, focusedHospital.longitude], 16);
+
+                        // Find and open the hospital marker popup after markers are created
+                        setTimeout(() => {
+                            const hospitalMarker = hospitalMarkersRef.current.find((marker, index) => {
+                                const hospital = initialHospitals[index];
+                                return hospital && hospital.id === focusedHospitalId;
+                            });
+                            if (hospitalMarker) {
+                                hospitalMarker.openPopup();
+                            }
+                        }, 500);
                     }
                 }
             }

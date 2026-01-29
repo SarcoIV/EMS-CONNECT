@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Bell, Menu, Search } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 
 export function Header() {
     return (
@@ -10,17 +9,8 @@ export function Header() {
                 <Menu size={20} />
             </Button>
 
-            {/* Search bar */}
-            <div className="flex flex-1 items-center gap-4">
-                <div className="relative hidden w-full max-w-md md:block">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                        type="search"
-                        placeholder="Quick search..."
-                        className="h-9 w-full rounded-full border-slate-200 bg-slate-50 pl-9 text-sm focus-visible:ring-[#7a1818]"
-                    />
-                </div>
-            </div>
+            {/* Spacer */}
+            <div className="flex-1"></div>
 
             {/* Right side actions */}
             <div className="flex items-center gap-2">
