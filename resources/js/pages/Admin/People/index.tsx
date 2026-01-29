@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { IncomingCallNotification } from '@/components/admin/IncomingCallNotification';
+import { Switch } from '@/components/ui/switch';
 import axios from 'axios';
 
 interface UserData {
@@ -406,7 +407,7 @@ export default function People({
                                                             {formatDate(userData.last_login_at)}
                                                         </td>
                                                         <td className="px-4 py-3">
-                                                            <div className="flex gap-1">
+                                                            <div className="flex items-center gap-3">
                                                                 <button
                                                                     onClick={() => handleViewUser(userData)}
                                                                     className="rounded p-2 text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-700 hover:shadow-sm"
@@ -417,26 +418,12 @@ export default function People({
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                     </svg>
                                                                 </button>
-                                                                <button
-                                                                    onClick={() => handleToggleStatus(userData.id)}
+                                                                <Switch
+                                                                    checked={userData.email_verified}
+                                                                    onCheckedChange={() => handleToggleStatus(userData.id)}
                                                                     disabled={isLoading}
-                                                                    className={`rounded p-2 transition-all ${
-                                                                        userData.email_verified
-                                                                            ? 'text-red-600 hover:bg-red-50 hover:text-red-700 hover:shadow-sm'
-                                                                            : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-sm'
-                                                                    } disabled:opacity-50`}
-                                                                    title={userData.email_verified ? 'Deactivate user' : 'Activate user'}
-                                                                >
-                                                                    {userData.email_verified ? (
-                                                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                                                        </svg>
-                                                                    ) : (
-                                                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                        </svg>
-                                                                    )}
-                                                                </button>
+                                                                    title={userData.email_verified ? 'Active' : 'Inactive'}
+                                                                />
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -562,26 +549,12 @@ export default function People({
                                                         <td className="px-4 py-3 text-xs text-slate-500">{formatDate(responder.created_at)}</td>
                                                         <td className="px-4 py-3 text-xs text-slate-500">{formatDate(responder.last_login_at)}</td>
                                                         <td className="px-4 py-3">
-                                                            <button
-                                                                onClick={() => handleToggleResponderStatus(responder.id)}
+                                                            <Switch
+                                                                checked={responder.email_verified}
+                                                                onCheckedChange={() => handleToggleResponderStatus(responder.id)}
                                                                 disabled={isLoading}
-                                                                className={`rounded p-2 transition-all ${
-                                                                    responder.email_verified
-                                                                        ? 'text-red-600 hover:bg-red-50 hover:text-red-700 hover:shadow-sm'
-                                                                        : 'text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow-sm'
-                                                                } disabled:opacity-50`}
-                                                                title={responder.email_verified ? 'Deactivate responder' : 'Activate responder'}
-                                                            >
-                                                                {responder.email_verified ? (
-                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                                                    </svg>
-                                                                ) : (
-                                                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                    </svg>
-                                                                )}
-                                                            </button>
+                                                                title={responder.email_verified ? 'Active' : 'Inactive'}
+                                                            />
                                                         </td>
                                                     </tr>
                                                 ))
