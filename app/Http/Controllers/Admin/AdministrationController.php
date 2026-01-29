@@ -19,7 +19,7 @@ class AdministrationController extends Controller
         $totalAvailability = User::where('role', 'responder')
             ->where('email_verified', true)
             ->where('is_on_duty', true)
-            ->whereDoesntHave('responderDispatches', function ($query) {
+            ->whereDoesntHave('dispatches', function ($query) {
                 $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived']);
             })
             ->count();
@@ -32,7 +32,7 @@ class AdministrationController extends Controller
         $activeResponders = User::where('role', 'responder')
             ->where('email_verified', true)
             ->where('is_on_duty', true)
-            ->whereHas('responderDispatches', function ($query) {
+            ->whereHas('dispatches', function ($query) {
                 $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived']);
             })
             ->count();
