@@ -298,7 +298,7 @@ class ResponderController extends Controller
                     }
                 }
 
-                return [
+                $data = [
                     'id' => $dispatch->id,
                     'incident_id' => $dispatch->incident_id,
                     'status' => $dispatch->status,
@@ -340,6 +340,13 @@ class ResponderController extends Controller
                         ],
                     ],
                 ];
+
+                // Include hospital route if arrived or transporting
+                if (in_array($dispatch->status, ['arrived', 'transporting_to_hospital'])) {
+                    $data['hospital_route'] = $dispatch->hospital_route_data;
+                }
+
+                return $data;
             });
 
             // Get nearby pending incidents within 3km (if location available and fresh)
@@ -498,7 +505,7 @@ class ResponderController extends Controller
 
             // Validate request
             $validated = $request->validate([
-                'status' => ['required', 'in:accepted,declined,en_route,arrived,completed'],
+                'status' => ['required', 'in:accepted,declined,en_route,arrived,transporting_to_hospital,completed'],
             ]);
 
             // Update dispatch status using service
@@ -507,16 +514,24 @@ class ResponderController extends Controller
                 $validated['status']
             );
 
+            $dispatchData = [
+                'id' => $updatedDispatch->id,
+                'status' => $updatedDispatch->status,
+                'accepted_at' => $updatedDispatch->accepted_at?->toIso8601String(),
+                'en_route_at' => $updatedDispatch->en_route_at?->toIso8601String(),
+                'arrived_at' => $updatedDispatch->arrived_at?->toIso8601String(),
+                'transporting_to_hospital_at' => $updatedDispatch->transporting_to_hospital_at?->toIso8601String(),
+                'completed_at' => $updatedDispatch->completed_at?->toIso8601String(),
+            ];
+
+            // Include hospital route data if transporting
+            if ($updatedDispatch->status === 'transporting_to_hospital') {
+                $dispatchData['hospital_route'] = $updatedDispatch->hospital_route_data;
+            }
+
             return response()->json([
                 'message' => 'Dispatch status updated successfully',
-                'dispatch' => [
-                    'id' => $updatedDispatch->id,
-                    'status' => $updatedDispatch->status,
-                    'accepted_at' => $updatedDispatch->accepted_at?->toIso8601String(),
-                    'en_route_at' => $updatedDispatch->en_route_at?->toIso8601String(),
-                    'arrived_at' => $updatedDispatch->arrived_at?->toIso8601String(),
-                    'completed_at' => $updatedDispatch->completed_at?->toIso8601String(),
-                ],
+                'dispatch' => $dispatchData,
             ]);
         } catch (\Exception $e) {
             Log::error('[RESPONDER] ❌ Failed to update dispatch status', [
@@ -534,6 +549,88 @@ class ResponderController extends Controller
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 422);
         }
+    }
+
+    /**
+     * Get hospital route for dispatch (on-demand).
+     *
+     * GET /api/responder/dispatches/{dispatchId}/hospital-route
+     *
+     * @param Request $request
+     * @param int $dispatchId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getHospitalRoute(Request $request, $dispatchId)
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user || !$user->isResponder()) {
+                return response()->json([
+                    'message' => 'Unauthorized. Only responders can access this endpoint.',
+                ], 403);
+            }
+
+            $dispatch = Dispatch::where('id', $dispatchId)
+                ->where('responder_id', $user->id)
+                ->with(['incident', 'hospital'])
+                ->firstOrFail();
+
+            // Check if status is arrived or transporting
+            if (!in_array($dispatch->status, ['arrived', 'transporting_to_hospital'])) {
+                return response()->json([
+                    'message' => 'Hospital route only available when arrived at incident',
+                    'current_status' => $dispatch->status,
+                ], 422);
+            }
+
+            // Try to use cached route data
+            if ($dispatch->hospital_route_data) {
+                return response()->json($dispatch->hospital_route_data);
+            }
+
+            // Calculate fresh route
+            $hospitalRoutingService = app(\App\Services\HospitalRoutingService::class);
+            $routeData = $hospitalRoutingService->calculateHospitalRoute($dispatch);
+            $hospitalRoutingService->cacheHospitalRoute($dispatch, $routeData);
+
+            return response()->json($routeData);
+
+        } catch (\Exception $e) {
+            Log::error('[RESPONDER] ❌ Failed to get hospital route', [
+                'dispatch_id' => $dispatchId,
+                'responder_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error_code' => $this->getErrorCode($e),
+            ], 422);
+        }
+    }
+
+    /**
+     * Map exception to error code.
+     *
+     * @param \Exception $e
+     * @return string
+     */
+    private function getErrorCode(\Exception $e): string
+    {
+        $message = $e->getMessage();
+
+        if (str_contains($message, 'No hospital assigned')) {
+            return 'NO_HOSPITAL_ASSIGNED';
+        }
+        if (str_contains($message, 'inactive')) {
+            return 'HOSPITAL_INACTIVE';
+        }
+        if (str_contains($message, 'location data unavailable')) {
+            return 'HOSPITAL_NO_LOCATION';
+        }
+
+        return 'ROUTE_CALCULATION_FAILED';
     }
 
     /**

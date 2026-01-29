@@ -29,6 +29,11 @@ class Dispatch extends Model
         'completed_at',
         'cancelled_at',
         'cancellation_reason',
+        'hospital_id',
+        'transporting_to_hospital_at',
+        'hospital_distance_meters',
+        'hospital_estimated_duration_seconds',
+        'hospital_route_data',
     ];
 
     /**
@@ -47,6 +52,10 @@ class Dispatch extends Model
             'arrived_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'transporting_to_hospital_at' => 'datetime',
+            'hospital_distance_meters' => 'decimal:2',
+            'hospital_estimated_duration_seconds' => 'decimal:2',
+            'hospital_route_data' => 'array',
         ];
     }
 
@@ -91,11 +100,19 @@ class Dispatch extends Model
     }
 
     /**
+     * Get the hospital assigned to this dispatch.
+     */
+    public function hospital(): BelongsTo
+    {
+        return $this->belongsTo(Hospital::class);
+    }
+
+    /**
      * Scope: Get only active dispatches (not completed or cancelled).
      */
     public function scopeActive(Builder $query): Builder
     {
-        return $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived']);
+        return $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital']);
     }
 
     /**
@@ -143,6 +160,17 @@ class Dispatch extends Model
     {
         $this->status = 'arrived';
         $this->arrived_at = now();
+
+        return $this->save();
+    }
+
+    /**
+     * Mark responder as transporting to hospital.
+     */
+    public function markTransportingToHospital(): bool
+    {
+        $this->status = 'transporting_to_hospital';
+        $this->transporting_to_hospital_at = now();
 
         return $this->save();
     }
@@ -222,7 +250,7 @@ class Dispatch extends Model
      */
     public function isActive(): bool
     {
-        return in_array($this->status, ['assigned', 'accepted', 'en_route', 'arrived']);
+        return in_array($this->status, ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital']);
     }
 
     /**

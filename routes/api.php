@@ -125,6 +125,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/dispatches/{id}/status', [ResponderController::class, 'updateDispatchStatus'])
             ->where('id', '[0-9]+');
 
+        // Get hospital route for dispatch
+        Route::get('/dispatches/{id}/hospital-route', [ResponderController::class, 'getHospitalRoute'])
+            ->where('id', '[0-9]+');
+
         // Submit pre-arrival form for a dispatch
         Route::post('/dispatches/{dispatchId}/pre-arrival', [ResponderController::class, 'storePreArrival'])
             ->where('dispatchId', '[0-9]+');

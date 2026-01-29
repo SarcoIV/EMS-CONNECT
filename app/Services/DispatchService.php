@@ -21,10 +21,14 @@ use Illuminate\Support\Facades\Log;
 class DispatchService
 {
     private DistanceCalculationService $distanceService;
+    private HospitalRoutingService $hospitalRoutingService;
 
-    public function __construct(DistanceCalculationService $distanceService)
-    {
+    public function __construct(
+        DistanceCalculationService $distanceService,
+        HospitalRoutingService $hospitalRoutingService
+    ) {
         $this->distanceService = $distanceService;
+        $this->hospitalRoutingService = $hospitalRoutingService;
     }
 
     /**
@@ -228,7 +232,8 @@ class DispatchService
             'assigned' => ['accepted', 'declined', 'cancelled'],
             'accepted' => ['en_route', 'cancelled'],
             'en_route' => ['arrived', 'cancelled'],
-            'arrived' => ['completed', 'cancelled'],
+            'arrived' => ['transporting_to_hospital', 'completed', 'cancelled'],
+            'transporting_to_hospital' => ['completed', 'cancelled'],
             'completed' => [],  // Terminal state
             'declined' => [],   // Terminal state
             'cancelled' => [],  // Terminal state
@@ -256,7 +261,7 @@ class DispatchService
         string $newStatus,
         ?string $reason = null
     ): Dispatch {
-        $allowedStatuses = ['accepted', 'declined', 'en_route', 'arrived', 'completed', 'cancelled'];
+        $allowedStatuses = ['accepted', 'declined', 'en_route', 'arrived', 'transporting_to_hospital', 'completed', 'cancelled'];
 
         if (! in_array($newStatus, $allowedStatuses)) {
             throw new \Exception("Invalid dispatch status: {$newStatus}");
@@ -295,6 +300,35 @@ class DispatchService
                     $incident->responders_arrived += 1;
                     break;
 
+                case 'transporting_to_hospital':
+                    $dispatch->markTransportingToHospital();
+                    // Keep responder status as 'busy' (already set during 'arrived')
+
+                    // Decrement arrived counter (responder leaving scene)
+                    if ($dispatch->status === 'arrived') {
+                        $incident->responders_arrived = max(0, $incident->responders_arrived - 1);
+                    }
+
+                    // Calculate and cache hospital route
+                    try {
+                        $routeData = $this->hospitalRoutingService->calculateHospitalRoute($dispatch);
+                        $this->hospitalRoutingService->cacheHospitalRoute($dispatch, $routeData);
+
+                        Log::info('[DISPATCH] 🏥 Transporting to hospital', [
+                            'dispatch_id' => $dispatch->id,
+                            'hospital_id' => $routeData['hospital']['id'],
+                            'hospital_name' => $routeData['hospital']['name'],
+                            'distance_meters' => $routeData['route']['distance_meters'],
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('[DISPATCH] ❌ Failed to calculate hospital route', [
+                            'dispatch_id' => $dispatch->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // Don't fail status update, allow manual navigation
+                    }
+                    break;
+
                 case 'completed':
                     $dispatch->complete();
                     $responder->responder_status = 'idle';
@@ -305,6 +339,7 @@ class DispatchService
                     if ($dispatch->status === 'arrived') {
                         $incident->responders_arrived = max(0, $incident->responders_arrived - 1);
                     }
+                    // No counter changes needed for transporting_to_hospital (already decremented)
                     break;
 
                 case 'declined':
