@@ -15,6 +15,9 @@ return new class extends Migration
         $driver = DB::connection()->getDriverName();
 
         if ($driver === 'mysql') {
+            // For MySQL: Add a regular index first, then drop the unique constraint
+            // This is necessary because the foreign key needs an index
+            DB::statement('ALTER TABLE pre_arrival_forms ADD INDEX pre_arrival_forms_dispatch_id_index (dispatch_id)');
             DB::statement('ALTER TABLE pre_arrival_forms DROP INDEX pre_arrival_forms_dispatch_id_unique');
         } elseif ($driver === 'pgsql') {
             DB::statement('ALTER TABLE pre_arrival_forms DROP CONSTRAINT IF EXISTS pre_arrival_forms_dispatch_id_unique');
@@ -26,8 +29,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('pre_arrival_forms', function (Blueprint $table) {
-            $table->unique('dispatch_id');
-        });
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'mysql') {
+            // For MySQL: Add unique constraint back, then drop the regular index
+            DB::statement('ALTER TABLE pre_arrival_forms ADD UNIQUE INDEX pre_arrival_forms_dispatch_id_unique (dispatch_id)');
+            DB::statement('ALTER TABLE pre_arrival_forms DROP INDEX pre_arrival_forms_dispatch_id_index');
+        } else {
+            Schema::table('pre_arrival_forms', function (Blueprint $table) {
+                $table->unique('dispatch_id');
+            });
+        }
     }
 };
