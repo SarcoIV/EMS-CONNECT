@@ -1,12 +1,20 @@
 import { useState, FormEvent } from 'react';
 import axios from 'axios';
 
+interface Incident {
+    id: number;
+    type: string;
+    location: any;
+    description: string;
+}
+
 interface CreateIncidentModalProps {
     isOpen: boolean;
     onClose: () => void;
     callerId: number;
     callerName: string;
     callId: number;
+    existingIncident?: Incident | null;
     onIncidentCreated?: (incident: any) => void;
 }
 
@@ -25,6 +33,7 @@ export function CreateIncidentModal({
     callerId,
     callerName,
     callId,
+    existingIncident,
     onIncidentCreated,
 }: CreateIncidentModalProps) {
     const [formData, setFormData] = useState({
@@ -106,6 +115,23 @@ export function CreateIncidentModal({
                         <span className="font-semibold">{callerName}</span>
                     </p>
                 </div>
+
+                {/* Warning Banner - Existing Incident */}
+                {existingIncident && (
+                    <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+                        <div className="flex items-start gap-2">
+                            <span className="text-yellow-600 text-lg">⚠️</span>
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold text-yellow-800">
+                                    Incident #{existingIncident.id} Already Linked
+                                </p>
+                                <p className="text-xs text-yellow-700 mt-1">
+                                    Creating a new incident will replace the existing one.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">

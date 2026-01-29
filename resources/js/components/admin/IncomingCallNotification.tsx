@@ -197,11 +197,9 @@ export function IncomingCallNotification() {
                 // Remove from incoming calls list
                 setIncomingCalls((prev) => prev.filter((c) => c.id !== call.id));
 
-                // AUTO-OPEN INCIDENT FORM if no incident is linked
-                if (!call.incident_id) {
-                    console.log('[CALLS] 📝 Auto-opening incident form (no incident linked)');
-                    setShowCreateIncidentModal(true);
-                }
+                // ALWAYS AUTO-OPEN INCIDENT FORM when call is answered
+                console.log('[CALLS] 📝 Auto-opening incident form');
+                setShowCreateIncidentModal(true);
             }
         } catch (error) {
             console.error('[CALLS] ❌ Failed to answer call:', error);
@@ -410,6 +408,7 @@ export function IncomingCallNotification() {
                     callerId={activeCall.caller.id}
                     callerName={activeCall.caller.name}
                     callId={activeCall.id}
+                    existingIncident={activeCall.incident}
                     onIncidentCreated={(incident) => {
                         // Update activeCall with the new incident
                         setActiveCall({
