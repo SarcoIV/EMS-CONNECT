@@ -15,5 +15,6 @@ class DatabaseSeeder extends Seeder
         $this->call(DriverSeeder::class);
         $this->call(AdminSeeder::class);
         $this->call(HospitalSeeder::class);
+        $this->call(DemoResidentSeeder::class);
     }
 }
