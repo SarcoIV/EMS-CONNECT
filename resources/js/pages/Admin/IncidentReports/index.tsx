@@ -622,7 +622,7 @@ export default function IncidentReports({
                                     <p className="font-medium text-slate-700">{selectedIncident.address || 'No address'}</p>
                                     {selectedIncident.latitude && selectedIncident.longitude && (
                                         <p className="text-xs text-slate-400">
-                                            {selectedIncident.latitude.toFixed(6)}, {selectedIncident.longitude.toFixed(6)}
+                                            {Number(selectedIncident.latitude).toFixed(6)}, {Number(selectedIncident.longitude).toFixed(6)}
                                         </p>
                                     )}
                                 </div>
