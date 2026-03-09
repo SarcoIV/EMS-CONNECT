@@ -559,7 +559,7 @@ export default function AdminDashboard({
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getTypeBadge(incident.type)}`}>
-                                                            {incident.type.replace('_', ' ')}
+                                                            {incident.type.replace('_', ' ').toUpperCase()}
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-3 max-w-[200px]">
@@ -570,7 +570,7 @@ export default function AdminDashboard({
                                                     <td className="px-4 py-3">
                                                         <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusBadge(incident.status)}`}>
                                                             {incident.status === 'pending' && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />}
-                                                            {incident.status.replace('_', ' ')}
+                                                            {incident.status.replace('_', ' ').toUpperCase()}
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-3 text-xs text-slate-500">
@@ -592,7 +592,7 @@ export default function AdminDashboard({
                                                                                 dispatch.status === 'accepted' ? 'bg-purple-100 text-purple-700' :
                                                                                 'bg-gray-100 text-gray-700'
                                                                             }`}>
-                                                                                {dispatch.status.replace('_', ' ')}
+                                                                                {dispatch.status.replace('_', ' ').toUpperCase()}
                                                                             </span>
                                                                             {dispatch.distance_text !== 'N/A' && (
                                                                                 <span className="text-slate-500">
@@ -632,7 +632,7 @@ export default function AdminDashboard({
                                                                         className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
                                                                         title="Track responder in real-time with Google Maps"
                                                                     >
-                                                                        Track
+                                                                        TRACK
                                                                     </button>
                                                                 )}
 
@@ -643,7 +643,7 @@ export default function AdminDashboard({
                                                                         className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 inline-block"
                                                                         title="Select responders and dispatch"
                                                                     >
-                                                                        Dispatch
+                                                                        DISPATCH
                                                                     </a>
                                                                 )}
 
@@ -655,7 +655,7 @@ export default function AdminDashboard({
                                                                         className="rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-200 disabled:opacity-50"
                                                                         title="Mark as resolved"
                                                                     >
-                                                                        Complete
+                                                                        COMPLETE
                                                                     </button>
                                                                 )}
                                                             </div>
