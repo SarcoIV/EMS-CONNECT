@@ -8,11 +8,13 @@ interface PreArrivalInfoProps {
 export default function PreArrivalInfo({ dispatches }: PreArrivalInfoProps) {
     // Filter dispatches that have pre-arrival forms
     const formsWithResponder = dispatches
-        .filter((dispatch) => dispatch.pre_arrival_form !== null)
-        .map((dispatch) => ({
-            responder: dispatch.responder,
-            form: dispatch.pre_arrival_form!,
-        }));
+        .filter((dispatch) => dispatch.pre_arrival_forms.length > 0)
+        .flatMap((dispatch) =>
+            dispatch.pre_arrival_forms.map((form) => ({
+                responder: dispatch.responder,
+                form,
+            }))
+        );
 
     if (formsWithResponder.length === 0) {
         return (

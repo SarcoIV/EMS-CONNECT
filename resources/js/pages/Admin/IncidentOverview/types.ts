@@ -53,7 +53,7 @@ export interface Dispatch {
     cancellation_reason: string | null;
     responder: Responder;
     assigned_by: Admin | null;
-    pre_arrival_form: PreArrivalForm | null;
+    pre_arrival_forms: PreArrivalForm[];
 }
 
 export interface Call {
