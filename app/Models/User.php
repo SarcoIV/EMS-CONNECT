@@ -179,7 +179,7 @@ class User extends Authenticatable
     public function activeDispatch()
     {
         return $this->hasOne(Dispatch::class, 'responder_id')
-            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital'])
             ->latest('assigned_at');
     }
 

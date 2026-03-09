@@ -182,7 +182,7 @@ class LiveMapController extends Controller
             'responder:id,name,email,phone_number,current_latitude,current_longitude,base_latitude,base_longitude,responder_status,location_updated_at',
             'incident:id,type,status,latitude,longitude,address',
         ])
-            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital'])
             ->orderBy('assigned_at', 'desc')
             ->get();
 

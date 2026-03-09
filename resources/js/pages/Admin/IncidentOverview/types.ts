@@ -48,6 +48,7 @@ export interface Dispatch {
     accepted_at: string | null;
     en_route_at: string | null;
     arrived_at: string | null;
+    transporting_to_hospital_at: string | null;
     completed_at: string | null;
     cancelled_at: string | null;
     cancellation_reason: string | null;

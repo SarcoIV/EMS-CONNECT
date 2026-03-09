@@ -359,6 +359,7 @@ class DispatchService
         try {
             $incident = $dispatch->incident;
             $responder = $dispatch->responder;
+            $oldStatus = $dispatch->status;
 
             // Update dispatch based on new status
             switch ($newStatus) {
@@ -376,7 +377,7 @@ class DispatchService
                 case 'arrived':
                     $dispatch->markArrived();
                     $responder->responder_status = 'busy';
-                    if ($dispatch->status === 'en_route') {
+                    if ($oldStatus === 'en_route') {
                         $incident->responders_en_route = max(0, $incident->responders_en_route - 1);
                     }
                     $incident->responders_arrived += 1;
@@ -387,7 +388,7 @@ class DispatchService
                     // Keep responder status as 'busy' (already set during 'arrived')
 
                     // Decrement arrived counter (responder leaving scene)
-                    if ($dispatch->status === 'arrived') {
+                    if ($oldStatus === 'arrived') {
                         $incident->responders_arrived = max(0, $incident->responders_arrived - 1);
                     }
 
@@ -415,10 +416,10 @@ class DispatchService
                     $dispatch->complete();
                     $responder->responder_status = 'idle';
                     $incident->responders_assigned = max(0, $incident->responders_assigned - 1);
-                    if ($dispatch->status === 'en_route') {
+                    if ($oldStatus === 'en_route') {
                         $incident->responders_en_route = max(0, $incident->responders_en_route - 1);
                     }
-                    if ($dispatch->status === 'arrived') {
+                    if ($oldStatus === 'arrived') {
                         $incident->responders_arrived = max(0, $incident->responders_arrived - 1);
                     }
                     // No counter changes needed for transporting_to_hospital (already decremented)
@@ -434,10 +435,10 @@ class DispatchService
                     $dispatch->cancel($reason);
                     $responder->responder_status = 'idle';
                     $incident->responders_assigned = max(0, $incident->responders_assigned - 1);
-                    if ($dispatch->status === 'en_route') {
+                    if ($oldStatus === 'en_route') {
                         $incident->responders_en_route = max(0, $incident->responders_en_route - 1);
                     }
-                    if ($dispatch->status === 'arrived') {
+                    if ($oldStatus === 'arrived') {
                         $incident->responders_arrived = max(0, $incident->responders_arrived - 1);
                     }
                     break;
@@ -457,7 +458,7 @@ class DispatchService
                 'dispatch_id' => $dispatch->id,
                 'incident_id' => $incident->id,
                 'responder_id' => $responder->id,
-                'old_status' => $dispatch->status,
+                'old_status' => $oldStatus,
                 'new_status' => $newStatus,
             ]);
 
@@ -485,7 +486,7 @@ class DispatchService
     {
         // Only auto-complete if no active dispatches remain
         $activeDispatches = Dispatch::where('incident_id', $incident->id)
-            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital'])
             ->count();
 
         if ($activeDispatches === 0 && $incident->status === 'dispatched') {

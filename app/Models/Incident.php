@@ -172,7 +172,7 @@ class Incident extends Model
     public function hasActiveDispatches(): bool
     {
         return $this->dispatches()
-            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+            ->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital'])
             ->exists();
     }
 }

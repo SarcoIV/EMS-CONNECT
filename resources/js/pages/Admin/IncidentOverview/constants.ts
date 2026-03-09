@@ -3,6 +3,7 @@ export const DISPATCH_STATUS_COLORS: Record<string, string> = {
     accepted: 'bg-cyan-100 text-cyan-700',
     en_route: 'bg-purple-100 text-purple-700',
     arrived: 'bg-amber-100 text-amber-700',
+    transporting_to_hospital: 'bg-pink-100 text-pink-700',
     completed: 'bg-emerald-100 text-emerald-700',
     cancelled: 'bg-slate-100 text-slate-700',
     declined: 'bg-red-100 text-red-700',

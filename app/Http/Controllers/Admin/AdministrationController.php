@@ -20,7 +20,7 @@ class AdministrationController extends Controller
             ->where('email_verified', true)
             ->where('is_on_duty', true)
             ->whereDoesntHave('dispatches', function ($query) {
-                $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived']);
+                $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital']);
             })
             ->count();
 
@@ -33,12 +33,12 @@ class AdministrationController extends Controller
             ->where('email_verified', true)
             ->where('is_on_duty', true)
             ->whereHas('dispatches', function ($query) {
-                $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived']);
+                $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital']);
             })
             ->count();
 
         // Calculate Total Active Units (active dispatches)
-        $totalActiveUnits = Dispatch::whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+        $totalActiveUnits = Dispatch::whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital'])
             ->count();
 
         // Get EMS Monitoring Activities (recent dispatches with details)

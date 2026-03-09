@@ -114,6 +114,17 @@ export const buildTimeline = (incident: Incident): TimelineEvent[] => {
             });
         }
 
+        if (dispatch.transporting_to_hospital_at) {
+            events.push({
+                id: `dispatch-${dispatch.id}-transporting`,
+                timestamp: dispatch.transporting_to_hospital_at,
+                title: `${dispatch.responder.name} Transporting to Hospital`,
+                details: 'Responder is transporting patient to hospital',
+                color: 'bg-pink-500',
+                icon: 'truck',
+            });
+        }
+
         if (dispatch.completed_at) {
             events.push({
                 id: `dispatch-${dispatch.id}-completed`,

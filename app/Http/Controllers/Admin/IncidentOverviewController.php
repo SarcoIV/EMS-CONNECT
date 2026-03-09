@@ -79,6 +79,7 @@ class IncidentOverviewController extends Controller
                         'accepted_at' => $dispatch->accepted_at?->toIso8601String(),
                         'en_route_at' => $dispatch->en_route_at?->toIso8601String(),
                         'arrived_at' => $dispatch->arrived_at?->toIso8601String(),
+                        'transporting_to_hospital_at' => $dispatch->transporting_to_hospital_at?->toIso8601String(),
                         'completed_at' => $dispatch->completed_at?->toIso8601String(),
                         'cancelled_at' => $dispatch->cancelled_at?->toIso8601String(),
                         'cancellation_reason' => $dispatch->cancellation_reason,

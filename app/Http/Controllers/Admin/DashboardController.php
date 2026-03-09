@@ -128,7 +128,7 @@ class DashboardController extends Controller
         $incidents = Incident::with([
             'user:id,name,email,phone_number',
             'dispatches' => function ($query) {
-                $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived'])
+                $query->whereIn('status', ['assigned', 'accepted', 'en_route', 'arrived', 'transporting_to_hospital'])
                     ->orderBy('assigned_at', 'desc');
             },
             'dispatches.responder:id,name,current_latitude,current_longitude,responder_status,location_updated_at',

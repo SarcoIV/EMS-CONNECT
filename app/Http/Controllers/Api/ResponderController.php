@@ -10,6 +10,7 @@ use App\Models\PreArrivalForm;
 use App\Services\DispatchService;
 use App\Services\DistanceCalculationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
