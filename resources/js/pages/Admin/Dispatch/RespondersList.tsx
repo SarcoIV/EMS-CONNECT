@@ -15,6 +15,15 @@ interface Responder {
     distance_method?: string;
 }
 
+interface AvailabilityDiagnostics {
+    total_responders: number;
+    verified: number;
+    on_duty: number;
+    idle: number;
+    with_location: number;
+    in_radius: number;
+}
+
 interface RespondersListProps {
     responders: Responder[];
     selectedResponder: Responder | null;
@@ -22,6 +31,7 @@ interface RespondersListProps {
     onConfirmDispatch: () => void;
     isLoading: boolean;
     isLoadingResponders: boolean;
+    diagnostics: AvailabilityDiagnostics | null;
 }
 
 // Status badge colors
@@ -40,6 +50,7 @@ export default function RespondersList({
     onConfirmDispatch,
     isLoading,
     isLoadingResponders,
+    diagnostics,
 }: RespondersListProps) {
     const closestResponder = responders.length > 0 ? responders[0] : null;
 
@@ -50,7 +61,7 @@ export default function RespondersList({
                 <div>
                     <h2 className="text-lg font-semibold text-gray-900">Available Responders</h2>
                     <p className="text-sm text-gray-600">
-                        {isLoadingResponders ? 'Loading...' : `${responders.length} responder(s) on duty`}
+                        {isLoadingResponders ? 'Loading...' : `${responders.length} responder(s) available`}
                     </p>
                 </div>
 
@@ -85,6 +96,19 @@ export default function RespondersList({
                             <p className="text-gray-500 text-sm mt-2">
                                 Please ensure responders are on duty and have location enabled.
                             </p>
+                            {diagnostics && diagnostics.total_responders > 0 && (
+                                <div className="mt-4 text-left bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                                    <p className="font-semibold mb-1">Availability breakdown:</p>
+                                    <ul className="space-y-0.5">
+                                        <li>{diagnostics.total_responders} total responder(s)</li>
+                                        <li>{diagnostics.verified} email verified</li>
+                                        <li>{diagnostics.on_duty} on duty</li>
+                                        <li>{diagnostics.idle} idle (not busy)</li>
+                                        <li>{diagnostics.with_location} with GPS location</li>
+                                        <li>{diagnostics.in_radius} within 3km radius</li>
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ) : (

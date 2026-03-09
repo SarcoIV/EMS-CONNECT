@@ -32,6 +32,78 @@ class DispatchService
     }
 
     /**
+     * Get availability diagnostics showing how many responders pass each filter condition.
+     *
+     * @param  Incident  $incident  The incident for radius check
+     * @return array{total_responders: int, verified: int, on_duty: int, idle: int, with_location: int, in_radius: int}
+     */
+    public function getAvailabilityDiagnostics(Incident $incident): array
+    {
+        $maxRadiusMeters = 3000;
+
+        $totalResponders = User::where('role', 'responder')->count();
+        $verified = User::where('role', 'responder')->where('email_verified', true)->count();
+        $onDuty = User::where('role', 'responder')->where('email_verified', true)->where('is_on_duty', true)->count();
+        $idle = User::where('role', 'responder')->where('email_verified', true)->where('is_on_duty', true)->where('responder_status', 'idle')->count();
+
+        $withLocation = User::where('role', 'responder')
+            ->where('email_verified', true)
+            ->where('is_on_duty', true)
+            ->where('responder_status', 'idle')
+            ->where(function ($query) {
+                $query->whereNotNull('current_latitude')
+                    ->whereNotNull('current_longitude')
+                    ->orWhere(function ($q) {
+                        $q->whereNotNull('base_latitude')
+                            ->whereNotNull('base_longitude');
+                    });
+            })
+            ->count();
+
+        // Count responders within 3km radius
+        $respondersWithLoc = User::where('role', 'responder')
+            ->where('email_verified', true)
+            ->where('is_on_duty', true)
+            ->where('responder_status', 'idle')
+            ->where(function ($query) {
+                $query->whereNotNull('current_latitude')
+                    ->whereNotNull('current_longitude')
+                    ->orWhere(function ($q) {
+                        $q->whereNotNull('base_latitude')
+                            ->whereNotNull('base_longitude');
+                    });
+            })
+            ->get();
+
+        $inRadius = $respondersWithLoc->filter(function (User $responder) use ($incident, $maxRadiusMeters) {
+            $lat = $responder->current_latitude ?? $responder->base_latitude;
+            $lon = $responder->current_longitude ?? $responder->base_longitude;
+
+            if (is_null($lat) || is_null($lon)) {
+                return false;
+            }
+
+            $distance = DistanceCalculationService::calculateHaversineDistance(
+                (float) $lat,
+                (float) $lon,
+                (float) $incident->latitude,
+                (float) $incident->longitude
+            );
+
+            return $distance <= $maxRadiusMeters;
+        })->count();
+
+        return [
+            'total_responders' => $totalResponders,
+            'verified' => $verified,
+            'on_duty' => $onDuty,
+            'idle' => $idle,
+            'with_location' => $withLocation,
+            'in_radius' => $inRadius,
+        ];
+    }
+
+    /**
      * Get available responders for an incident with calculated distances.
      * Only responders within 3km radius are included.
      *
@@ -60,8 +132,18 @@ class DispatchService
             ->get();
 
         if ($responders->isEmpty()) {
+            $totalResponders = User::where('role', 'responder')->count();
+            $verifiedCount = User::where('role', 'responder')->where('email_verified', true)->count();
+            $onDutyCount = User::where('role', 'responder')->where('email_verified', true)->where('is_on_duty', true)->count();
+            $idleCount = User::where('role', 'responder')->where('email_verified', true)->where('is_on_duty', true)->where('responder_status', 'idle')->count();
+
             Log::warning('[DISPATCH] No available responders found for incident', [
                 'incident_id' => $incident->id,
+                'total_responders' => $totalResponders,
+                'verified_responders' => $verifiedCount,
+                'on_duty_responders' => $onDutyCount,
+                'idle_responders' => $idleCount,
+                'note' => 'Check which condition eliminates responders',
             ]);
 
             return collect();

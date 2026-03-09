@@ -123,8 +123,11 @@ class DispatchController extends Controller
             $responders = $this->dispatchService->getAvailableResponders($incident);
 
             if ($responders->isEmpty()) {
+                $diagnostics = $this->dispatchService->getAvailabilityDiagnostics($incident);
+
                 return response()->json([
                     'responders' => [],
+                    'diagnostics' => $diagnostics,
                     'message' => 'No available responders found. Please ensure responders are on duty and have location enabled.',
                 ]);
             }

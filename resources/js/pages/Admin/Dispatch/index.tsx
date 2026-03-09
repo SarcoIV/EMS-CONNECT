@@ -67,6 +67,15 @@ interface Responder {
     distance_method?: string;
 }
 
+interface AvailabilityDiagnostics {
+    total_responders: number;
+    verified: number;
+    on_duty: number;
+    idle: number;
+    with_location: number;
+    in_radius: number;
+}
+
 interface DispatchProps {
     user: User;
     incident: Incident;
@@ -95,6 +104,7 @@ const POLL_INTERVAL = 5000; // Refresh responders every 5 seconds
 
 export default function Dispatch({ user, incident }: DispatchProps) {
     const [responders, setResponders] = useState<Responder[]>([]);
+    const [diagnostics, setDiagnostics] = useState<AvailabilityDiagnostics | null>(null);
     const [selectedResponder, setSelectedResponder] = useState<Responder | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingResponders, setIsLoadingResponders] = useState(false);
@@ -113,6 +123,7 @@ export default function Dispatch({ user, incident }: DispatchProps) {
 
             if (response.data.responders && Array.isArray(response.data.responders)) {
                 setResponders(response.data.responders);
+                setDiagnostics(response.data.diagnostics ?? null);
 
                 if (response.data.responders.length === 0) {
                     setError(response.data.message || 'No available responders found');
@@ -306,6 +317,7 @@ export default function Dispatch({ user, incident }: DispatchProps) {
                             onConfirmDispatch={handleConfirmDispatch}
                             isLoading={isLoading}
                             isLoadingResponders={isLoadingResponders}
+                            diagnostics={diagnostics}
                         />
                     </div>
 
