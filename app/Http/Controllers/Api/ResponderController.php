@@ -350,12 +350,12 @@ class ResponderController extends Controller
             });
 
             // Get nearby pending incidents within 3km (if location available and fresh)
-            $nearbyIncidentsData = [];
+            $nearbyIncidentsData = collect([]);
 
             if ($hasLocation && ! $locationStale && $user->is_on_duty) {
                 $nearbyIncidents = $this->getNearbyPendingIncidents($user, 3000); // 3km = 3000m
 
-                $nearbyIncidentsData = $nearbyIncidents->map(function ($incident) use ($user) {
+                $nearbyIncidentsData = $nearbyIncidents->map(function ($incident) use ($user, $dispatches) {
                     // Check if already assigned to this responder
                     $alreadyAssigned = $dispatches->contains(function ($dispatch) use ($incident) {
                         return $dispatch->incident_id === $incident->id;
@@ -366,12 +366,21 @@ class ResponderController extends Controller
                     }
 
                     // Calculate current distance and route
-                    $routeData = $this->distanceService->calculateRoadDistance(
-                        (float) $user->current_latitude,
-                        (float) $user->current_longitude,
-                        (float) $incident->latitude,
-                        (float) $incident->longitude
-                    );
+                    try {
+                        $routeData = $this->distanceService->calculateRoadDistance(
+                            (float) $user->current_latitude,
+                            (float) $user->current_longitude,
+                            (float) $incident->latitude,
+                            (float) $incident->longitude
+                        );
+                    } catch (\Exception $e) {
+                        Log::warning('[RESPONDER] Failed to calculate route for nearby incident', [
+                            'incident_id' => $incident->id,
+                            'error' => $e->getMessage(),
+                        ]);
+
+                        return null;
+                    }
 
                     return [
                         'incident_id' => $incident->id,
@@ -556,8 +565,7 @@ class ResponderController extends Controller
      *
      * GET /api/responder/dispatches/{dispatchId}/hospital-route
      *
-     * @param Request $request
-     * @param int $dispatchId
+     * @param  int  $dispatchId
      * @return \Illuminate\Http\JsonResponse
      */
     public function getHospitalRoute(Request $request, $dispatchId)
@@ -565,7 +573,7 @@ class ResponderController extends Controller
         try {
             $user = $request->user();
 
-            if (!$user || !$user->isResponder()) {
+            if (! $user || ! $user->isResponder()) {
                 return response()->json([
                     'message' => 'Unauthorized. Only responders can access this endpoint.',
                 ], 403);
@@ -577,7 +585,7 @@ class ResponderController extends Controller
                 ->firstOrFail();
 
             // Check if status is arrived or transporting
-            if (!in_array($dispatch->status, ['arrived', 'transporting_to_hospital'])) {
+            if (! in_array($dispatch->status, ['arrived', 'transporting_to_hospital'])) {
                 return response()->json([
                     'message' => 'Hospital route only available when arrived at incident',
                     'current_status' => $dispatch->status,
@@ -612,9 +620,6 @@ class ResponderController extends Controller
 
     /**
      * Map exception to error code.
-     *
-     * @param \Exception $e
-     * @return string
      */
     private function getErrorCode(\Exception $e): string
     {
@@ -645,8 +650,7 @@ class ResponderController extends Controller
      *
      * POST /api/responder/dispatches/{dispatchId}/pre-arrival
      *
-     * @param Request $request
-     * @param int $dispatchId
+     * @param  int  $dispatchId
      * @return JsonResponse
      */
     public function storePreArrival(Request $request, $dispatchId)

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
 import axios from 'axios';
@@ -53,6 +53,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
     });
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
+    const mapRef = useRef<google.maps.Map | null>(null);
 
     // Poll for route history updates while modal is open (replaces Echo real-time updates)
     useEffect(() => {
@@ -86,8 +87,8 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                     });
 
                     // Pan map to follow responder
-                    if (map) {
-                        map.panTo({ lat: latestPoint.latitude, lng: latestPoint.longitude });
+                    if (mapRef.current) {
+                        mapRef.current.panTo({ lat: latestPoint.latitude, lng: latestPoint.longitude });
                     }
                 }
             } catch (err: any) {
@@ -115,7 +116,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
             console.log('[TRACKING MODAL] Stopping route history polling');
             clearInterval(interval);
         };
-    }, [isOpen, dispatch.id, map]);
+    }, [isOpen, dispatch.id]);
 
     // Fit bounds when map loads or data changes
     useEffect(() => {
@@ -196,8 +197,8 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                                     mapContainerStyle={{ width: '100%', height: '100%' }}
                                     zoom={14}
                                     center={{ lat: incident.latitude, lng: incident.longitude }}
-                                    onLoad={(map) => setMap(map)}
-                                    onUnmount={() => setMap(null)}
+                                    onLoad={(map) => { setMap(map); mapRef.current = map; }}
+                                    onUnmount={() => { setMap(null); mapRef.current = null; }}
                                     options={{
                                         mapTypeControl: true,
                                         streetViewControl: true,
