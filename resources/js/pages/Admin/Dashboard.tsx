@@ -391,7 +391,7 @@ export default function AdminDashboard({
                                             <p className="mt-2 font-semibold text-slate-800">{call.user?.name || 'Unknown'}</p>
                                             <p className="text-sm text-slate-500">{call.user?.phone_number || call.user?.email}</p>
                                             {call.incident && (
-                                                <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${getTypeBadge(call.incident.type)}`}>
+                                                <span className={`mt-2 inline-flex capitalize rounded-full px-2 py-0.5 text-xs font-medium ${getTypeBadge(call.incident.type)}`}>
                                                     {call.incident.type.replace('_', ' ')}
                                                 </span>
                                             )}

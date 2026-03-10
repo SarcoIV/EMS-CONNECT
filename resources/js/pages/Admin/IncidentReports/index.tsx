@@ -460,7 +460,7 @@ export default function IncidentReports({
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[incident.status] || 'bg-slate-100 text-slate-700'}`}>
+                                                        <span className={`inline-flex capitalize rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[incident.status] || 'bg-slate-100 text-slate-700'}`}>
                                                             {(incident.status || 'unknown').replace('_', ' ')}
                                                         </span>
                                                     </td>

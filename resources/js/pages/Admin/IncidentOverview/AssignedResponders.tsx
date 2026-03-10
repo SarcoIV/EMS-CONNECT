@@ -42,7 +42,7 @@ export default function AssignedResponders({ dispatches }: AssignedRespondersPro
                                     DISPATCH_STATUS_COLORS[dispatch.status]
                                 }`}
                             >
-                                {dispatch.status.replace('_', ' ').toUpperCase()}
+                                {dispatch.status.replaceAll('_', ' ').toUpperCase()}
                             </span>
                         </div>
 

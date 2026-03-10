@@ -77,7 +77,14 @@ class HospitalRoutingService
                 'longitude' => (float) $hospital->longitude,
                 'phone_number' => $hospital->phone_number,
             ],
-            'route' => $routeData,
+            'route' => [
+                'distance_meters' => $routeData['distance_meters'],
+                'duration_seconds' => $routeData['duration_seconds'],
+                'distance_text' => $routeData['distance_text'],
+                'duration_text' => $routeData['duration_text'],
+                'coordinates' => $routeData['route_coordinates'],
+                'method' => $routeData['method'],
+            ],
         ];
     }
 
