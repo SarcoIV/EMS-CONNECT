@@ -205,9 +205,17 @@ export default function LiveMap({
 
             if (mapContainerRef.current && !mapRef.current) {
                 // Default center (Philippines)
-                const defaultCenter: [number, number] = [14.5995, 120.9842];
-                
-                mapRef.current = L.map(mapContainerRef.current).setView(defaultCenter, 12);
+                const defaultCenter: [number, number] = [14.650, 121.045];
+                const qcBounds: L.LatLngBoundsExpression = [
+                    [14.59, 120.99],   // SW corner
+                    [14.76, 121.10],   // NE corner
+                ];
+
+                mapRef.current = L.map(mapContainerRef.current, {
+                    maxBounds: qcBounds,
+                    maxBoundsViscosity: 1.0,
+                    minZoom: 12,
+                }).setView(defaultCenter, 13);
 
                 // Add OpenStreetMap tiles
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
