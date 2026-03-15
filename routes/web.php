@@ -120,6 +120,7 @@ Route::middleware([AdminMiddleware::class])->group(function () {
 
     // User Edit
     Route::get('admin/user-edit', [UserEditController::class, 'index'])->name('admin.user-edit');
+    Route::patch('admin/user-edit/{id}/toggle-status', [UserEditController::class, 'toggleStatus'])->name('admin.user-edit.toggle-status');
 
     // Chats (Messaging System) - Grouped by User
     Route::prefix('admin/chats')->group(function () {

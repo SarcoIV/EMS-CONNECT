@@ -1,86 +1,43 @@
 import React, { useState } from 'react';
+import { router } from '@inertiajs/react';
 import { Header } from '@/components/admin/header';
 import { Sidebar } from '@/components/admin/sidebar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, ChevronUp, UserPen } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import axios from 'axios';
 
 interface User {
+    id: number;
     name: string;
     email: string;
 }
 
 interface UserEditProps {
     user: User;
+    admins: AdminData[];
 }
 
-interface UserData {
+interface AdminData {
     id: number;
     name: string;
     email: string;
-    contactNumber: string;
-    avatar?: string;
-    isActive: boolean;
+    phone_number: string | null;
+    is_active: boolean;
 }
 
-export default function UserEdit({ user }: UserEditProps) {
+export default function UserEdit({ user, admins: initialAdmins }: UserEditProps) {
+    const [admins, setAdmins] = useState<AdminData[]>(initialAdmins);
     const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [titleFilter, setTitleFilter] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Mock user data
-    const [users, setUsers] = useState<UserData[]>([
-        {
-            id: 1,
-            name: 'Arlene McCoy',
-            email: 'Navin@gmail.com',
-            contactNumber: '0945678901',
-            isActive: true,
-        },
-        {
-            id: 2,
-            name: 'Cody Fisher',
-            email: 'Navin@gmail.com',
-            contactNumber: '0945678901',
-            isActive: false,
-        },
-        {
-            id: 3,
-            name: 'Jane Smith',
-            email: 'jane.smith@example.com',
-            contactNumber: '0945678902',
-            isActive: true,
-        },
-        {
-            id: 4,
-            name: 'John Doe',
-            email: 'john.doe@example.com',
-            contactNumber: '0945678903',
-            isActive: false,
-        },
-        {
-            id: 5,
-            name: 'Sarah Johnson',
-            email: 'sarah.j@example.com',
-            contactNumber: '0945678904',
-            isActive: true,
-        },
-        {
-            id: 6,
-            name: 'Mike Williams',
-            email: 'mike.w@example.com',
-            contactNumber: '0945678905',
-            isActive: true,
-        },
-    ]);
-
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            setSelectedUsers(new Set(users.map((u) => u.id)));
+            setSelectedUsers(new Set(admins.map((a) => a.id)));
         } else {
             setSelectedUsers(new Set());
         }
@@ -96,10 +53,22 @@ export default function UserEdit({ user }: UserEditProps) {
         setSelectedUsers(newSelected);
     };
 
-    const handleToggleStatus = (userId: number) => {
-        setUsers((prevUsers) =>
-            prevUsers.map((u) => (u.id === userId ? { ...u, isActive: !u.isActive } : u))
-        );
+    const handleToggleStatus = async (adminId: number) => {
+        if (adminId === user.id) {
+            alert('You cannot deactivate your own account.');
+            return;
+        }
+
+        try {
+            const response = await axios.patch(`/admin/user-edit/${adminId}/toggle-status`);
+            setAdmins((prev) =>
+                prev.map((a) =>
+                    a.id === adminId ? { ...a, is_active: response.data.admin.is_active } : a
+                )
+            );
+        } catch (error: any) {
+            alert(error.response?.data?.message || 'Failed to update status');
+        }
     };
 
     const handleSort = (key: string) => {
@@ -111,23 +80,23 @@ export default function UserEdit({ user }: UserEditProps) {
         });
     };
 
-    const sortedUsers = [...users].sort((a, b) => {
+    const sortedAdmins = [...admins].sort((a, b) => {
         if (!sortConfig) return 0;
 
-        const aValue = String(a[sortConfig.key as keyof UserData] ?? '');
-        const bValue = String(b[sortConfig.key as keyof UserData] ?? '');
+        const aValue = String(a[sortConfig.key as keyof AdminData] ?? '');
+        const bValue = String(b[sortConfig.key as keyof AdminData] ?? '');
 
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
     });
 
-    const filteredUsers = sortedUsers.filter((u) => {
-        const matchesTitle = u.name.toLowerCase().includes(titleFilter.toLowerCase());
+    const filteredAdmins = sortedAdmins.filter((a) => {
+        const matchesTitle = a.name.toLowerCase().includes(titleFilter.toLowerCase());
         const matchesSearch = !searchTerm || (
-            u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            u.contactNumber.includes(searchTerm)
+            a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            a.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (a.phone_number || '').includes(searchTerm)
         );
         return matchesTitle && matchesSearch;
     });
@@ -162,8 +131,7 @@ export default function UserEdit({ user }: UserEditProps) {
                         {/* Header with Count and Search */}
                         <div className="mb-6 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <h1 className="text-2xl font-bold text-gray-900">All ({users.length})</h1>
-                                <ChevronDown className="h-5 w-5 text-gray-500" />
+                                <h1 className="text-2xl font-bold text-gray-900">Admins ({admins.length})</h1>
                             </div>
                             <div className="relative w-80">
                                 <input
@@ -188,7 +156,7 @@ export default function UserEdit({ user }: UserEditProps) {
                                             <tr>
                                                 <th className="w-12 px-6 py-4">
                                                     <Checkbox
-                                                        checked={selectedUsers.size === users.length && users.length > 0}
+                                                        checked={selectedUsers.size === admins.length && admins.length > 0}
                                                         onCheckedChange={handleSelectAll}
                                                     />
                                                 </th>
@@ -200,7 +168,7 @@ export default function UserEdit({ user }: UserEditProps) {
                                                         onClick={() => handleSort('name')}
                                                         className="flex items-center gap-1 hover:text-gray-900 transition-colors"
                                                     >
-                                                        Title
+                                                        Name
                                                         <SortIcon columnKey="name" />
                                                     </button>
                                                 </th>
@@ -209,11 +177,11 @@ export default function UserEdit({ user }: UserEditProps) {
                                                 </th>
                                                 <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                                                     <button
-                                                        onClick={() => handleSort('contactNumber')}
+                                                        onClick={() => handleSort('phone_number')}
                                                         className="flex items-center gap-1 hover:text-gray-900 transition-colors"
                                                     >
-                                                        Contact number
-                                                        <SortIcon columnKey="contactNumber" />
+                                                        Contact Number
+                                                        <SortIcon columnKey="phone_number" />
                                                     </button>
                                                 </th>
                                                 <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
@@ -228,7 +196,7 @@ export default function UserEdit({ user }: UserEditProps) {
                                                 <td className="px-6 py-3"></td>
                                                 <td className="px-6 py-3">
                                                     <Input
-                                                        placeholder="Enter Title..."
+                                                        placeholder="Filter by name..."
                                                         value={titleFilter}
                                                         onChange={(e) => setTitleFilter(e.target.value)}
                                                         className="h-8 w-full text-sm"
@@ -239,82 +207,94 @@ export default function UserEdit({ user }: UserEditProps) {
                                                 <td className="px-6 py-3"></td>
                                             </tr>
 
-                                            {/* User Rows */}
-                                            {filteredUsers.map((userData) => (
-                                                <tr
-                                                    key={userData.id}
-                                                    className="transition-colors hover:bg-gray-50"
-                                                >
-                                                    <td className="px-6 py-4">
-                                                        <Checkbox
-                                                            checked={selectedUsers.has(userData.id)}
-                                                            onCheckedChange={(checked) =>
-                                                                handleSelectUser(userData.id, checked as boolean)
-                                                            }
-                                                        />
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <Avatar className="h-10 w-10">
-                                                            <AvatarImage src={userData.avatar} alt={userData.name} />
-                                                            <AvatarFallback className="bg-[#7a1818] text-white text-sm font-semibold">
-                                                                {getInitials(userData.name)}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm font-medium text-gray-900">
-                                                            {userData.name}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-600">{userData.email}</div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-600">
-                                                            {userData.contactNumber}
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <button
-                                                            onClick={() => handleToggleStatus(userData.id)}
-                                                            className={`rounded p-2 transition-all ${
-                                                                userData.isActive
-                                                                    ? 'text-red-600 hover:bg-red-50 hover:text-red-700 hover:shadow-sm'
-                                                                    : 'text-green-600 hover:bg-green-50 hover:text-green-700 hover:shadow-sm'
-                                                            }`}
-                                                            title={userData.isActive ? 'Deactivate user' : 'Activate user'}
-                                                        >
-                                                            {userData.isActive ? (
-                                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                                                                </svg>
-                                                            ) : (
-                                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                </svg>
-                                                            )}
-                                                        </button>
+                                            {/* Admin Rows */}
+                                            {filteredAdmins.length > 0 ? (
+                                                filteredAdmins.map((adminData) => (
+                                                    <tr
+                                                        key={adminData.id}
+                                                        className="transition-colors hover:bg-gray-50"
+                                                    >
+                                                        <td className="px-6 py-4">
+                                                            <Checkbox
+                                                                checked={selectedUsers.has(adminData.id)}
+                                                                onCheckedChange={(checked) =>
+                                                                    handleSelectUser(adminData.id, checked as boolean)
+                                                                }
+                                                            />
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <Avatar className="h-10 w-10">
+                                                                <AvatarFallback className="bg-[#7a1818] text-white text-sm font-semibold">
+                                                                    {getInitials(adminData.name)}
+                                                                </AvatarFallback>
+                                                            </Avatar>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="text-sm font-medium text-gray-900">
+                                                                {adminData.name}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="text-sm text-gray-600">{adminData.email}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="text-sm text-gray-600">
+                                                                {adminData.phone_number || 'No phone'}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <button
+                                                                onClick={() => handleToggleStatus(adminData.id)}
+                                                                className={`rounded p-2 transition-all ${
+                                                                    adminData.is_active
+                                                                        ? 'text-red-600 hover:bg-red-50 hover:text-red-700 hover:shadow-sm'
+                                                                        : 'text-green-600 hover:bg-green-50 hover:text-green-700 hover:shadow-sm'
+                                                                }`}
+                                                                title={adminData.is_active ? 'Deactivate admin' : 'Activate admin'}
+                                                            >
+                                                                {adminData.is_active ? (
+                                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                                                    </svg>
+                                                                ) : (
+                                                                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                )}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-12 text-center">
+                                                        <p className="text-lg font-medium text-gray-900">No admins found</p>
+                                                        <p className="mt-2 text-sm text-gray-500">
+                                                            {searchTerm || titleFilter
+                                                                ? 'Try adjusting your search criteria'
+                                                                : 'No admin accounts exist yet'}
+                                                        </p>
                                                     </td>
                                                 </tr>
-                                            ))}
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* Selected Count and Results Indicator */}
+                        {/* Selected Count */}
                         <div className="mt-4 flex items-center justify-between">
                             {selectedUsers.size > 0 && (
                                 <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3">
                                     <p className="text-sm font-medium text-blue-900">
-                                        {selectedUsers.size} user{selectedUsers.size !== 1 ? 's' : ''} selected
+                                        {selectedUsers.size} admin{selectedUsers.size !== 1 ? 's' : ''} selected
                                     </p>
                                 </div>
                             )}
                             {searchTerm && (
                                 <p className="text-sm text-gray-600">
-                                    Showing {filteredUsers.length} of {users.length} users
+                                    Showing {filteredAdmins.length} of {admins.length} admins
                                 </p>
                             )}
                         </div>
@@ -324,6 +304,3 @@ export default function UserEdit({ user }: UserEditProps) {
         </div>
     );
 }
-
-
-
