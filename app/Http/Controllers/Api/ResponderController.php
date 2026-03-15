@@ -6,6 +6,7 @@ use App\Events\PreArrivalFormSubmitted;
 use App\Events\ResponderLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Dispatch;
+use App\Models\Hospital;
 use App\Models\PreArrivalForm;
 use App\Services\DispatchService;
 use App\Services\DistanceCalculationService;
@@ -637,6 +638,91 @@ class ResponderController extends Controller
         }
 
         return 'ROUTE_CALCULATION_FAILED';
+    }
+
+    /**
+     * Assign a hospital to a dispatch.
+     *
+     * POST /api/responder/dispatches/{id}/assign-hospital
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function assignHospital(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+
+            if (! $user || ! $user->isResponder()) {
+                return response()->json([
+                    'message' => 'Unauthorized. Only responders can assign hospitals.',
+                ], 403);
+            }
+
+            $dispatch = Dispatch::findOrFail($id);
+
+            if ($dispatch->responder_id !== $user->id) {
+                return response()->json([
+                    'message' => 'Unauthorized. This dispatch is not assigned to you.',
+                ], 403);
+            }
+
+            $allowedStatuses = ['accepted', 'en_route', 'arrived', 'transporting_to_hospital'];
+            if (! in_array($dispatch->status, $allowedStatuses)) {
+                return response()->json([
+                    'message' => 'Hospital can only be assigned when dispatch is accepted, en route, arrived, or transporting.',
+                    'current_status' => $dispatch->status,
+                ], 422);
+            }
+
+            $validated = $request->validate([
+                'hospital_id' => ['required', 'integer', 'exists:hospitals,id'],
+            ]);
+
+            $hospital = Hospital::where('id', $validated['hospital_id'])
+                ->where('is_active', true)
+                ->firstOrFail();
+
+            $dispatch->hospital_id = $hospital->id;
+            $dispatch->hospital_route_data = null;
+            $dispatch->hospital_distance_meters = null;
+            $dispatch->hospital_estimated_duration_seconds = null;
+            $dispatch->save();
+
+            Log::info('[RESPONDER] Hospital assigned to dispatch', [
+                'dispatch_id' => $dispatch->id,
+                'hospital_id' => $hospital->id,
+                'hospital_name' => $hospital->name,
+                'responder_id' => $user->id,
+            ]);
+
+            return response()->json([
+                'message' => 'Hospital assigned successfully',
+                'dispatch' => [
+                    'id' => $dispatch->id,
+                    'status' => $dispatch->status,
+                    'hospital_id' => $dispatch->hospital_id,
+                    'hospital' => [
+                        'id' => $hospital->id,
+                        'name' => $hospital->name,
+                        'address' => $hospital->address,
+                        'latitude' => (float) $hospital->latitude,
+                        'longitude' => (float) $hospital->longitude,
+                        'phone_number' => $hospital->phone_number,
+                    ],
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[RESPONDER] Failed to assign hospital', [
+                'dispatch_id' => $id,
+                'responder_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to assign hospital',
+            ], 422);
+        }
     }
 
     /**

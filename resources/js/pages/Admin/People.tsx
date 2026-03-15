@@ -281,7 +281,7 @@ export default function People({ user, users: initialUsers, admins: initialAdmin
                                                                     ? 'bg-blue-100 text-blue-700' 
                                                                     : 'bg-slate-100 text-slate-700'
                                                             }`}>
-                                                                {userData.role || 'community'}
+                                                                {(userData.role || 'community').charAt(0).toUpperCase() + (userData.role || 'community').slice(1)}
                                                             </span>
                                                         </td>
                                                         <td className="px-4 py-3">
@@ -434,7 +434,7 @@ export default function People({ user, users: initialUsers, admins: initialAdmin
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-sm text-slate-500">Role</span>
-                                    <span className="text-sm font-medium text-slate-700">{selectedUser.role || 'community'}</span>
+                                    <span className="text-sm font-medium text-slate-700">{(selectedUser.role || 'community').charAt(0).toUpperCase() + (selectedUser.role || 'community').slice(1)}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-sm text-slate-500">Status</span>

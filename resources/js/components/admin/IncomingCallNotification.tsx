@@ -281,7 +281,7 @@ export function IncomingCallNotification() {
         <>
             {/* Incoming Call Notification */}
             {incomingCalls.length > 0 && !isInCall && !activeCall && (
-                <div className="fixed right-4 top-20 z-50 animate-bounce">
+                <div className="fixed right-4 top-4 z-[100] animate-bounce">
                     {incomingCalls.map((call) => (
                         <div
                             key={call.id}

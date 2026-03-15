@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CallController;
+use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\IncidentController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ResponderController;
@@ -86,6 +87,13 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // -------------------------------------------------------------------------
+    // Hospital Routes
+    // -------------------------------------------------------------------------
+    Route::prefix('hospitals')->group(function () {
+        Route::get('/nearby', [HospitalController::class, 'nearby']);
+    });
+
+    // -------------------------------------------------------------------------
     // Incident Routes
     // -------------------------------------------------------------------------
     Route::prefix('incidents')->group(function () {
@@ -132,6 +140,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Submit pre-arrival form for a dispatch
         Route::post('/dispatches/{dispatchId}/pre-arrival', [ResponderController::class, 'storePreArrival'])
             ->where('dispatchId', '[0-9]+');
+
+        // Assign hospital to dispatch
+        Route::post('/dispatches/{id}/assign-hospital', [ResponderController::class, 'assignHospital'])
+            ->where('id', '[0-9]+');
     });
 
     // -------------------------------------------------------------------------
