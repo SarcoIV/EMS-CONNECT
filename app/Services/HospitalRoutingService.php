@@ -12,10 +12,22 @@ class HospitalRoutingService
     ) {}
 
     /**
-     * Get hospital for dispatch (priority: dispatch override > responder assigned)
-     *
-     * @param Dispatch $dispatch
-     * @return Hospital|null
+     * Find the nearest active hospital from a given location.
+     */
+    public function findNearestHospital(float $latitude, float $longitude): ?Hospital
+    {
+        return Hospital::active()
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->selectRaw('*, (6371000 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance_meters', [
+                $latitude, $longitude, $latitude,
+            ])
+            ->orderBy('distance_meters')
+            ->first();
+    }
+
+    /**
+     * Get hospital for dispatch (priority: dispatch override > responder assigned > nearest)
      */
     public function getHospitalForDispatch(Dispatch $dispatch): ?Hospital
     {
@@ -27,9 +39,22 @@ class HospitalRoutingService
         // 2. Check responder's assigned hospital (string field)
         $responder = $dispatch->responder;
         if ($responder->hospital_assigned) {
-            return Hospital::where('name', $responder->hospital_assigned)
+            $hospital = Hospital::where('name', $responder->hospital_assigned)
                 ->where('is_active', true)
                 ->first();
+
+            if ($hospital) {
+                return $hospital;
+            }
+        }
+
+        // 3. Auto-find nearest hospital from incident location
+        $incident = $dispatch->incident;
+        if ($incident && $incident->latitude && $incident->longitude) {
+            return $this->findNearestHospital(
+                (float) $incident->latitude,
+                (float) $incident->longitude
+            );
         }
 
         return null;
@@ -38,23 +63,22 @@ class HospitalRoutingService
     /**
      * Calculate route from incident to hospital
      *
-     * @param Dispatch $dispatch
-     * @return array
+     *
      * @throws \Exception
      */
     public function calculateHospitalRoute(Dispatch $dispatch): array
     {
         $hospital = $this->getHospitalForDispatch($dispatch);
 
-        if (!$hospital) {
+        if (! $hospital) {
             throw new \Exception('No hospital assigned to responder');
         }
 
-        if (!$hospital->is_active) {
+        if (! $hospital->is_active) {
             throw new \Exception('Assigned hospital is inactive');
         }
 
-        if (!$hospital->latitude || !$hospital->longitude) {
+        if (! $hospital->latitude || ! $hospital->longitude) {
             throw new \Exception('Hospital location data unavailable');
         }
 
@@ -90,10 +114,6 @@ class HospitalRoutingService
 
     /**
      * Cache hospital route data in dispatch
-     *
-     * @param Dispatch $dispatch
-     * @param array $routeData
-     * @return void
      */
     public function cacheHospitalRoute(Dispatch $dispatch, array $routeData): void
     {

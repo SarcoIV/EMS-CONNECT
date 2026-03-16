@@ -535,8 +535,8 @@ class ResponderController extends Controller
                 'completed_at' => $updatedDispatch->completed_at?->toIso8601String(),
             ];
 
-            // Include hospital route data if transporting
-            if ($updatedDispatch->status === 'transporting_to_hospital') {
+            // Include hospital route data if arrived or transporting
+            if (in_array($updatedDispatch->status, ['arrived', 'transporting_to_hospital'])) {
                 $dispatchData['hospital_route'] = $updatedDispatch->hospital_route_data;
             }
 

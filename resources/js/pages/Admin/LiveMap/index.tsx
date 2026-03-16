@@ -250,7 +250,7 @@ export default function LiveMap({
 
             if (mapContainerRef.current && !mapRef.current) {
                 // Default center (Project 6, Quezon City)
-                const defaultCenter: [number, number] = [14.650, 121.045];
+                const defaultCenter: [number, number] = [14.648, 121.038];
                 const qcBounds: L.LatLngBoundsExpression = [
                     [14.59, 120.99],   // SW corner
                     [14.76, 121.10],   // NE corner
@@ -260,7 +260,7 @@ export default function LiveMap({
                     maxBounds: qcBounds,
                     maxBoundsViscosity: 1.0,
                     minZoom: 12,
-                }).setView(defaultCenter, 13);
+                }).setView(defaultCenter, 15);
 
                 // Add OpenStreetMap tiles
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

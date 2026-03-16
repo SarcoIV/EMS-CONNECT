@@ -249,7 +249,7 @@ class LiveMapController extends Controller
             ->get();
 
         // Filter responders: only show those within 3km of any active incident
-        $maxRadiusMeters = 3000; // 3km
+        $maxRadiusMeters = 1000; // 1km
         $respondersInRange = $responders->filter(function ($responder) use ($activeIncidents, $maxRadiusMeters) {
             $responderLat = $responder->current_latitude ?? $responder->base_latitude;
             $responderLon = $responder->current_longitude ?? $responder->base_longitude;

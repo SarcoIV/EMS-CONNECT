@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Log;
 class DispatchService
 {
     private DistanceCalculationService $distanceService;
+
     private HospitalRoutingService $hospitalRoutingService;
 
     public function __construct(
@@ -39,7 +40,7 @@ class DispatchService
      */
     public function getAvailabilityDiagnostics(Incident $incident): array
     {
-        $maxRadiusMeters = 3000;
+        $maxRadiusMeters = 1000;
 
         $totalResponders = User::where('role', 'responder')->count();
         $verified = User::where('role', 'responder')->where('email_verified', true)->count();
@@ -112,8 +113,8 @@ class DispatchService
      */
     public function getAvailableResponders(Incident $incident): Collection
     {
-        // Define maximum dispatch radius (3km = 3000 meters)
-        $maxRadiusMeters = 3000;
+        // Define maximum dispatch radius (1km = 1000 meters)
+        $maxRadiusMeters = 1000;
 
         // Get all available responders (on duty, idle, verified, with location)
         $responders = User::where('role', 'responder')
@@ -381,6 +382,33 @@ class DispatchService
                         $incident->responders_en_route = max(0, $incident->responders_en_route - 1);
                     }
                     $incident->responders_arrived += 1;
+
+                    // Auto-assign nearest hospital and calculate route
+                    try {
+                        $nearestHospital = $this->hospitalRoutingService->findNearestHospital(
+                            (float) $incident->latitude,
+                            (float) $incident->longitude
+                        );
+
+                        if ($nearestHospital) {
+                            $dispatch->hospital_id = $nearestHospital->id;
+                            $dispatch->save();
+
+                            $routeData = $this->hospitalRoutingService->calculateHospitalRoute($dispatch);
+                            $this->hospitalRoutingService->cacheHospitalRoute($dispatch, $routeData);
+
+                            Log::info('[DISPATCH] Auto-assigned nearest hospital on arrival', [
+                                'dispatch_id' => $dispatch->id,
+                                'hospital_id' => $nearestHospital->id,
+                                'hospital_name' => $nearestHospital->name,
+                            ]);
+                        }
+                    } catch (\Exception $e) {
+                        Log::error('[DISPATCH] Failed to auto-assign hospital', [
+                            'dispatch_id' => $dispatch->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                     break;
 
                 case 'transporting_to_hospital':
@@ -480,7 +508,6 @@ class DispatchService
      * Check if incident should be auto-completed when all dispatches are finished.
      *
      * @param  Incident  $incident  The incident to check
-     * @return void
      */
     private function checkAndCompleteIncident(Incident $incident): void
     {
