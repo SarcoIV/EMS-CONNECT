@@ -592,7 +592,7 @@ export default function AdminDashboard({
                                                                                 dispatch.status === 'accepted' ? 'bg-purple-100 text-purple-700' :
                                                                                 'bg-gray-100 text-gray-700'
                                                                             }`}>
-                                                                                {dispatch.status.replace('_', ' ').toUpperCase()}
+                                                                                {dispatch.status.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                                                             </span>
                                                                             {dispatch.distance_text !== 'N/A' && (
                                                                                 <span className="text-slate-500">

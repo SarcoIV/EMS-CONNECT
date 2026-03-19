@@ -360,7 +360,7 @@ export default function LiveMap({
                         🚑 ${responder.name}
                     </div>
                     <div style="display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ${dispatchStatusColors[dispatch.status]}30; color: ${dispatchStatusColors[dispatch.status]}; margin-bottom: 8px;">
-                        ${dispatch.status.toUpperCase().replace('_', ' ')}
+                        ${dispatch.status.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </div>
                     <div style="margin-top: 8px; font-size: 12px;">
                         <strong>Going to:</strong> ${incident.address || 'Incident #' + incident.id}<br/>

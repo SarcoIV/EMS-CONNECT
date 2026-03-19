@@ -281,7 +281,7 @@ export function IncomingCallNotification() {
         <>
             {/* Incoming Call Notification */}
             {incomingCalls.length > 0 && !isInCall && !activeCall && (
-                <div className="fixed right-4 top-4 z-[100] animate-bounce">
+                <div className="fixed right-4 top-4 z-[1100] animate-bounce">
                     {incomingCalls.map((call) => (
                         <div
                             key={call.id}
@@ -328,7 +328,7 @@ export function IncomingCallNotification() {
                 <>
                     {/* Compact Call Widget (shown when incident form is open) */}
                     {showCreateIncidentModal ? (
-                        <div className="fixed right-6 top-6 z-[70] w-80 animate-in fade-in slide-in-from-top-5 duration-300">
+                        <div className="fixed right-6 top-6 z-[1100] w-80 animate-in fade-in slide-in-from-top-5 duration-300">
                             <div className="rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-800 p-5 text-white shadow-2xl border border-red-500/20">
                                 {/* Header */}
                                 <div className="mb-4 flex items-center gap-3">
@@ -373,7 +373,7 @@ export function IncomingCallNotification() {
                         </div>
                     ) : (
                         /* Full-Screen Call Modal (shown when incident form is closed) */
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/80 backdrop-blur-sm">
                             <div className="w-96 rounded-2xl bg-gradient-to-b from-red-600 to-red-700 p-8 text-white shadow-2xl">
                                 <div className="mb-6 text-center">
                                     <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/20">

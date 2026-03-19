@@ -157,7 +157,7 @@ export function ResponderTrackingModal({ dispatch, incident, isOpen, onClose }: 
                         <div className="flex items-center gap-4">
                             <div>
                                 <span className="text-xs text-slate-500">Status</span>
-                                <p className="font-medium">{dispatch.status.replace('_', ' ')}</p>
+                                <p className="font-medium">{dispatch.status.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}</p>
                             </div>
                             <div>
                                 <span className="text-xs text-slate-500">Distance</span>
