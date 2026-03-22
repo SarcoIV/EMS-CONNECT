@@ -26,17 +26,6 @@ Route::get('logout', [LoginController::class, 'destroy'])->name('auth.logout');
 
 /*
 |--------------------------------------------------------------------------
-| This controller handles Google Auth Logic
-|--------------------------------------------------------------------------
-*/
-
-use App\Http\Controllers\Auth\SocialAuthController;
-
-Route::get('/auth/google', [SocialAuthController::class, 'redirectToGoogle'])->name('auth.google');
-Route::get('/auth/google/callback', [SocialAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
-
-/*
-|--------------------------------------------------------------------------
 | This controller handles Register Logic
 |--------------------------------------------------------------------------
 */
