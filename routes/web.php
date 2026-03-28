@@ -1,45 +1,48 @@
 <?php
 
-use App\Http\Controllers\HomeController;
-use App\Http\Middleware\GuestMiddleware;
+use Illuminate\Support\Facades\Route;
+
 /*
 |--------------------------------------------------------------------------
-| This controller handles the homepage and other public-facing pages that don't require authentication
+| Public Controllers
 |--------------------------------------------------------------------------
 */
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
 /*
 |--------------------------------------------------------------------------
-| This controller handles Login Logic
+| Authentication Controllers
 |--------------------------------------------------------------------------
 */
 
 use App\Http\Controllers\Auth\LoginController;
-
-Route::get('login', [LoginController::class, 'index'])->middleware(GuestMiddleware::class)->name('auth.login');
-Route::post('login', [LoginController::class, 'store'])->name('auth.login.store');
-Route::get('logout', [LoginController::class, 'destroy'])->name('auth.logout');
-
-/*
-|--------------------------------------------------------------------------
-| This controller handles Register Logic
-|--------------------------------------------------------------------------
-*/
-
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Middleware\GuestMiddleware;
 
-Route::get('register', [RegisterController::class, 'index'])->middleware(GuestMiddleware::class)->name('auth.register');
+Route::get('login', [LoginController::class, 'index'])
+    ->middleware(GuestMiddleware::class)
+    ->name('auth.login');
+
+Route::post('login', [LoginController::class, 'store'])
+    ->name('auth.login.store');
+
+Route::get('logout', [LoginController::class, 'destroy'])
+    ->name('auth.logout');
+
+Route::get('register', [RegisterController::class, 'index'])
+    ->middleware(GuestMiddleware::class)
+    ->name('auth.register');
 
 /*
 |--------------------------------------------------------------------------
-| This controller handles All Admin Logic
+| Admin Controllers
 |--------------------------------------------------------------------------
 */
 
+use App\Http\Middleware\AdminMiddleware;
 use App\Http\Controllers\Admin\AdministrationController;
 use App\Http\Controllers\Admin\AdminMessageController;
 use App\Http\Controllers\Admin\ArchiveController;
@@ -51,11 +54,11 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\IncidentManagementController;
 use App\Http\Controllers\Admin\IncidentOverviewController;
 use App\Http\Controllers\Admin\IncidentReportsController;
+use App\Http\Controllers\Admin\IncidentPrintController;
 use App\Http\Controllers\Admin\LiveMapController;
 use App\Http\Controllers\Admin\PeopleController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserEditController;
-use App\Http\Middleware\AdminMiddleware;
 
 Route::middleware([AdminMiddleware::class])->group(function () {
 
@@ -65,7 +68,7 @@ Route::middleware([AdminMiddleware::class])->group(function () {
     Route::patch('admin/incidents/{id}/status', [DashboardController::class, 'updateIncidentStatus'])->name('admin.incidents.updateStatus');
     Route::patch('admin/incidents/{id}/dispatch', [DashboardController::class, 'dispatch'])->name('admin.incidents.dispatch');
 
-    // Dispatch (Admin-controlled responder assignment)
+    // Dispatch
     Route::get('admin/dispatch/{id}', [DispatchController::class, 'show'])->name('admin.dispatch.show');
     Route::get('admin/incidents/{id}/available-responders', [DispatchController::class, 'getAvailableResponders'])->name('admin.incidents.availableResponders');
     Route::post('admin/dispatch/assign', [DispatchController::class, 'assignResponder'])->name('admin.dispatch.assign');
@@ -80,8 +83,16 @@ Route::middleware([AdminMiddleware::class])->group(function () {
     Route::get('admin/incident-reports', [IncidentReportsController::class, 'index'])->name('admin.incident-reports');
     Route::get('admin/incident-reports/export', [IncidentReportsController::class, 'export'])->name('admin.incident-reports.export');
 
-    // Incident Overview (READ-ONLY monitoring page)
+    // ✅ ADDED PRINT REPORT ROUTE (EXACT POSITION)
+    Route::get('admin/incident-reports/print', [IncidentReportsController::class, 'printReport'])
+        ->name('admin.incident-reports.print');
+
+    // Incident Overview
     Route::get('admin/incidents/{id}/overview', [IncidentOverviewController::class, 'show'])->name('admin.incidents.overview');
+
+    // ✅ PRINT ROUTE (FIXED LOCATION)
+    Route::get('admin/incidents/{id}/print', [IncidentPrintController::class, 'show'])
+        ->name('admin.incidents.print');
 
     // Administration
     Route::get('admin/administration', [AdministrationController::class, 'index'])->name('admin.administration');
@@ -111,7 +122,7 @@ Route::middleware([AdminMiddleware::class])->group(function () {
     Route::get('admin/user-edit', [UserEditController::class, 'index'])->name('admin.user-edit');
     Route::patch('admin/user-edit/{id}/toggle-status', [UserEditController::class, 'toggleStatus'])->name('admin.user-edit.toggle-status');
 
-    // Chats (Messaging System) - Grouped by User
+    // Chats
     Route::prefix('admin/chats')->group(function () {
         Route::get('/', [AdminMessageController::class, 'index'])->name('admin.chats');
         Route::get('/conversations', [AdminMessageController::class, 'getConversations'])->name('admin.chats.conversations');
@@ -126,7 +137,7 @@ Route::middleware([AdminMiddleware::class])->group(function () {
     // Archive
     Route::get('admin/archive', [ArchiveController::class, 'index'])->name('admin.archive');
 
-    // Calls (Voice Calling with Agora)
+    // Calls
     Route::prefix('admin/calls')->group(function () {
         Route::get('incoming', [CallsController::class, 'incoming'])->name('admin.calls.incoming');
         Route::post('answer', [CallsController::class, 'answer'])->name('admin.calls.answer');
@@ -135,13 +146,13 @@ Route::middleware([AdminMiddleware::class])->group(function () {
         Route::get('{id}/status', [CallsController::class, 'getCallStatus'])->name('admin.calls.status');
     });
 
-    // Admin incident creation (during calls)
+    // Incident Creation
     Route::post('admin/incidents/create', [IncidentManagementController::class, 'store'])->name('admin.incidents.create');
 });
 
 /*
 |--------------------------------------------------------------------------
-| This controller handles All User Logic
+| User Controllers
 |--------------------------------------------------------------------------
 */
 
@@ -151,10 +162,8 @@ use App\Http\Middleware\UserMiddleware;
 
 Route::middleware([UserMiddleware::class])->group(function () {
 
-    // Dashboard
     Route::get('dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
 
-    // Settings
     Route::get('user/settings', [UserSettingsController::class, 'index'])->name('user.settings');
     Route::put('user/settings/profile', [UserSettingsController::class, 'updateProfile'])->name('user.settings.updateProfile');
     Route::put('user/settings/password', [UserSettingsController::class, 'updatePassword'])->name('user.settings.updatePassword');

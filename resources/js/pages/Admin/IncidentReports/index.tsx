@@ -100,6 +100,37 @@ const typeIcons: Record<string, string> = {
     other: '⚠️',
 };
 
+// ── Print helpers ────────────────────────────────────────────────────────────
+
+/** Open the single-incident print view in a new tab */
+function printIncident(incidentId: number) {
+    window.open(`/admin/incidents/${incidentId}/print`, '_blank');
+}
+
+/** Build a batch print URL that forwards the current active filters */
+function buildBatchPrintUrl(filters: Filters): string {
+    const params = new URLSearchParams();
+    if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+    if (filters.type   && filters.type   !== 'all') params.set('type',   filters.type);
+    if (filters.date_from) params.set('date_from', filters.date_from);
+    if (filters.date_to)   params.set('date_to',   filters.date_to);
+    if (filters.search)    params.set('search',     filters.search);
+    const qs = params.toString();
+    return `/admin/incident-reports/print${qs ? `?${qs}` : ''}`;
+}
+
+// ── Print icon SVG ───────────────────────────────────────────────────────────
+function PrintIcon({ className = 'h-4 w-4' }: { className?: string }) {
+    return (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+    );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function IncidentReports({
     user,
     incidents,
@@ -156,8 +187,6 @@ export default function IncidentReports({
         try {
             setIsLoading(true);
             await axios.patch(`/admin/incidents/${incidentId}/dispatch`);
-            
-            // Refresh page data
             handleFilter();
             alert('Incident dispatched successfully!');
         } catch (error: any) {
@@ -214,21 +243,39 @@ export default function IncidentReports({
 
                 <main className="flex-1 overflow-y-auto p-4 md:p-6">
                     <div className="mx-auto max-w-7xl space-y-6">
-                        {/* Page Header */}
+
+                        {/* ── Page Header ───────────────────────────────── */}
                         <div className="flex items-center justify-between">
                             <div>
                                 <h1 className="text-2xl font-bold text-slate-800">Incident Reports</h1>
                                 <p className="text-sm text-slate-500">View and manage all incident reports</p>
                             </div>
-                            <a
-                                href="/admin/incident-reports/export"
-                                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                            >
-                                📥 Export CSV
-                            </a>
+
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-2">
+                                {/* 🖨️ Batch Print — forwards active filters */}
+                                <a
+                                    href={buildBatchPrintUrl(localFilters)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                                    title="Print or save a PDF of the current filtered list"
+                                >
+                                    <PrintIcon />
+                                    Print Report
+                                </a>
+
+                                {/* CSV Export */}
+                                <a
+                                    href="/admin/incident-reports/export"
+                                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+                                >
+                                    📥 Export CSV
+                                </a>
+                            </div>
                         </div>
 
-                        {/* Stats Cards */}
+                        {/* ── Stats Cards ───────────────────────────────── */}
                         <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Total</p>
@@ -237,71 +284,53 @@ export default function IncidentReports({
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Pending</p>
                                 <p className="mt-1 text-2xl font-bold text-amber-600">{stats.pending}</p>
-                                                        </div>
+                            </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Dispatched</p>
                                 <p className="mt-1 text-2xl font-bold text-blue-600">{stats.dispatched}</p>
-                                                            </div>
+                            </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">In Progress</p>
                                 <p className="mt-1 text-2xl font-bold text-purple-600">{stats.in_progress}</p>
-                                            </div>
+                            </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Completed</p>
                                 <p className="mt-1 text-2xl font-bold text-emerald-600">{stats.completed}</p>
-                                                </div>
+                            </div>
                             <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <p className="text-xs font-medium uppercase text-slate-500">Cancelled</p>
                                 <p className="mt-1 text-2xl font-bold text-slate-500">{stats.cancelled}</p>
-                                            </div>
-                                        </div>
+                            </div>
+                        </div>
 
-                        {/* Charts Row */}
+                        {/* ── Charts Row ────────────────────────────────── */}
                         <div className="grid gap-6 lg:grid-cols-2">
                             {/* Trend Chart */}
                             <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                                 <h3 className="mb-4 font-semibold text-slate-700">Incidents (Last 7 Days)</h3>
-                                        <div className="h-48">
+                                <div className="h-48">
                                     {trendData.length > 0 ? (
-                                            <ResponsiveContainer width="100%" height="100%">
+                                        <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                                    <defs>
+                                                <defs>
                                                     <linearGradient id="colorIncidents" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                                                        <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.3} />
                                                         <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                                                    <XAxis
-                                                        dataKey="date"
-                                                        stroke="#64748b"
-                                                        style={{ fontSize: '11px' }}
-                                                    tickFormatter={(value) => formatShortDate(value)}
-                                                    />
-                                                    <YAxis stroke="#64748b" style={{ fontSize: '11px' }} />
-                                                    <Tooltip
-                                                        contentStyle={{
-                                                            backgroundColor: 'white',
-                                                            border: '1px solid #e2e8f0',
-                                                            borderRadius: '8px',
-                                                            fontSize: '12px',
-                                                        }}
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                                <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '11px' }} tickFormatter={(v) => formatShortDate(v)} />
+                                                <YAxis stroke="#64748b" style={{ fontSize: '11px' }} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
                                                     formatter={(value) => [value ?? 0, 'Incidents']}
                                                     labelFormatter={(label) => formatShortDate(label)}
-                                                    />
-                                                    <Area
-                                                        type="monotone"
-                                                    dataKey="count"
-                                                        stroke="#ef4444"
-                                                    fill="url(#colorIncidents)"
-                                                    strokeWidth={2}
-                                                    />
-                                                </AreaChart>
-                                            </ResponsiveContainer>
+                                                />
+                                                <Area type="monotone" dataKey="count" stroke="#ef4444" fill="url(#colorIncidents)" strokeWidth={2} />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
                                     ) : (
-                                        <div className="flex h-full items-center justify-center text-slate-400">
-                                            No trend data available
-                                        </div>
+                                        <div className="flex h-full items-center justify-center text-slate-400">No trend data available</div>
                                     )}
                                 </div>
                             </div>
@@ -315,15 +344,7 @@ export default function IncidentReports({
                                             <div className="h-full w-1/2">
                                                 <ResponsiveContainer width="100%" height="100%">
                                                     <PieChart>
-                                                        <Pie
-                                                            data={typeDistribution}
-                                                            cx="50%"
-                                                            cy="50%"
-                                                            innerRadius={40}
-                                                            outerRadius={70}
-                                                            dataKey="count"
-                                                            paddingAngle={2}
-                                                        >
+                                                        <Pie data={typeDistribution} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="count" paddingAngle={2}>
                                                             {typeDistribution.map((entry, index) => (
                                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                                             ))}
@@ -343,15 +364,13 @@ export default function IncidentReports({
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="flex h-full w-full items-center justify-center text-slate-400">
-                                            No type data available
-                                        </div>
+                                        <div className="flex h-full w-full items-center justify-center text-slate-400">No type data available</div>
                                     )}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Filters */}
+                        {/* ── Filters ───────────────────────────────────── */}
                         <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
                             <div className="flex flex-wrap items-end gap-4">
                                 <div>
@@ -368,7 +387,7 @@ export default function IncidentReports({
                                         <option value="completed">Completed</option>
                                         <option value="cancelled">Cancelled</option>
                                     </select>
-                                    </div>
+                                </div>
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500">Type</label>
                                     <select
@@ -391,8 +410,8 @@ export default function IncidentReports({
                                         value={localFilters.date_from || ''}
                                         onChange={(e) => setLocalFilters({ ...localFilters, date_from: e.target.value })}
                                         className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-300 focus:outline-none"
-                                            />
-                                        </div>
+                                    />
+                                </div>
                                 <div>
                                     <label className="mb-1 block text-xs font-medium text-slate-500">Date To</label>
                                     <input
@@ -400,8 +419,8 @@ export default function IncidentReports({
                                         value={localFilters.date_to || ''}
                                         onChange={(e) => setLocalFilters({ ...localFilters, date_to: e.target.value })}
                                         className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-300 focus:outline-none"
-                                            />
-                                        </div>
+                                    />
+                                </div>
                                 <div className="flex-1">
                                     <label className="mb-1 block text-xs font-medium text-slate-500">Search</label>
                                     <input
@@ -429,7 +448,7 @@ export default function IncidentReports({
                             </div>
                         </div>
 
-                        {/* Incidents Table */}
+                        {/* ── Incidents Table ───────────────────────────── */}
                         <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
                             <div className="overflow-x-auto">
                                 <table className="min-w-full text-left text-sm">
@@ -479,7 +498,8 @@ export default function IncidentReports({
                                                         {formatDate(incident.created_at)}
                                                     </td>
                                                     <td className="px-4 py-3">
-                                                        <div className="flex gap-1">
+                                                        <div className="flex items-center gap-1">
+                                                            {/* View details */}
                                                             <button
                                                                 onClick={() => handleViewIncident(incident)}
                                                                 className="rounded p-1.5 text-slate-500 hover:bg-slate-100"
@@ -490,6 +510,8 @@ export default function IncidentReports({
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                                 </svg>
                                                             </button>
+
+                                                            {/* Full overview */}
                                                             <a
                                                                 href={`/admin/incidents/${incident.id}/overview`}
                                                                 className="rounded p-1.5 text-blue-600 hover:bg-blue-50"
@@ -499,6 +521,17 @@ export default function IncidentReports({
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                 </svg>
                                                             </a>
+
+                                                            {/* 🖨️ Print single incident */}
+                                                            <button
+                                                                onClick={() => printIncident(incident.id)}
+                                                                className="rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                                                                title="Print incident report"
+                                                            >
+                                                                <PrintIcon />
+                                                            </button>
+
+                                                            {/* View on map */}
                                                             {incident.latitude && incident.longitude && (
                                                                 <a
                                                                     href={`/admin/live-map?incident=${incident.id}`}
@@ -511,6 +544,8 @@ export default function IncidentReports({
                                                                     </svg>
                                                                 </a>
                                                             )}
+
+                                                            {/* Dispatch */}
                                                             {incident.status === 'pending' && (
                                                                 <a
                                                                     href={`/admin/dispatch/${incident.id}`}
@@ -582,19 +617,40 @@ export default function IncidentReports({
                 </main>
             </div>
 
-            {/* Incident Detail Modal */}
+            {/* ── Incident Detail Modal ──────────────────────────────── */}
             {showDetailModal && selectedIncident && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDetailModal(false)}>
-                    <div className="mx-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                    onClick={() => setShowDetailModal(false)}
+                >
+                    <div
+                        className="mx-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal header */}
                         <div className="mb-4 flex items-center justify-between">
                             <h2 className="text-lg font-bold text-slate-800">
                                 Incident #{selectedIncident.id.toString().padStart(4, '0')}
                             </h2>
-                            <button onClick={() => setShowDetailModal(false)} className="text-slate-400 hover:text-slate-600">
-                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {/* 🖨️ Print button inside modal */}
+                                <button
+                                    onClick={() => printIncident(selectedIncident.id)}
+                                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                                    title="Print this incident report"
+                                >
+                                    <PrintIcon className="h-4 w-4" />
+                                    Print
+                                </button>
+                                <button
+                                    onClick={() => setShowDetailModal(false)}
+                                    className="text-slate-400 hover:text-slate-600"
+                                >
+                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -649,14 +705,23 @@ export default function IncidentReports({
                                 </div>
                             </div>
 
-                            {selectedIncident.latitude && selectedIncident.longitude && (
+                            {/* Bottom action buttons */}
+                            <div className="flex gap-2">
+                                {selectedIncident.latitude && selectedIncident.longitude && (
+                                    <a
+                                        href={`/admin/live-map?incident=${selectedIncident.id}`}
+                                        className="flex-1 rounded-lg bg-red-600 py-2 text-center font-medium text-white hover:bg-red-700"
+                                    >
+                                        View on Live Map
+                                    </a>
+                                )}
                                 <a
-                                    href={`/admin/live-map?incident=${selectedIncident.id}`}
-                                    className="block rounded-lg bg-red-600 py-2 text-center font-medium text-white hover:bg-red-700"
+                                    href={`/admin/incidents/${selectedIncident.id}/overview`}
+                                    className="flex-1 rounded-lg border border-slate-200 py-2 text-center text-sm font-medium text-slate-700 hover:bg-slate-50"
                                 >
-                                    View on Live Map
+                                    Full Overview
                                 </a>
-                            )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -664,4 +729,3 @@ export default function IncidentReports({
         </div>
     );
 }
-

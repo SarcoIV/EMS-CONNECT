@@ -213,4 +213,96 @@ class IncidentReportsController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    /**
+     * Return a print-ready HTML view of all filtered incidents (batch report).
+     * Respects the same status / type / date / search filters as index().
+     * Opens in a new tab — admin uses browser Print / Save as PDF.
+     */
+    public function printReport(Request $request)
+    {
+        $user = Auth::user();
+
+        // Same filter logic as index()
+        $status   = $request->query('status', 'all');
+        $type     = $request->query('type', 'all');
+        $dateFrom = $request->query('date_from');
+        $dateTo   = $request->query('date_to');
+        $search   = $request->query('search');
+
+        $query = Incident::with(['user:id,name,email,phone_number']);
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        if ($type !== 'all') {
+            $query->where('type', $type);
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // No pagination — fetch all matching records for the print view
+        $incidents = $query->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($incident) {
+                return [
+                    'id'            => $incident->id,
+                    'type'          => $incident->type,
+                    'status'        => $incident->status,
+                    'address'       => $incident->address,
+                    'description'   => $incident->description,
+                    'created_at'    => $incident->created_at?->toIso8601String(),
+                    'dispatched_at' => $incident->dispatched_at?->toIso8601String(),
+                    'completed_at'  => $incident->completed_at?->toIso8601String(),
+                    'user'          => $incident->user ? [
+                        'name'         => $incident->user->name,
+                        'email'        => $incident->user->email,
+                        'phone_number' => $incident->user->phone_number,
+                    ] : null,
+                ];
+            })
+            ->toArray();
+
+        // Overall stats (global — matches the index() stats cards)
+        $stats = [
+            'total'       => Incident::count(),
+            'pending'     => Incident::where('status', 'pending')->count(),
+            'dispatched'  => Incident::where('status', 'dispatched')->count(),
+            'in_progress' => Incident::where('status', 'in_progress')->count(),
+            'completed'   => Incident::where('status', 'completed')->count(),
+            'cancelled'   => Incident::where('status', 'cancelled')->count(),
+        ];
+
+        return view('admin.incident-batch-print', [
+            'incidents'   => $incidents,
+            'total'       => count($incidents),
+            'stats'       => $stats,
+            'filters'     => [
+                'status'    => $status,
+                'type'      => $type,
+                'date_from' => $dateFrom,
+                'date_to'   => $dateTo,
+                'search'    => $search,
+            ],
+            'generatedBy' => $user->name,
+        ]);
+    }
 }
