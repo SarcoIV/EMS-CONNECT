@@ -39,9 +39,9 @@ class IncidentPrintController extends Controller
             'created_at'          => $incident->created_at?->toIso8601String(),
             'dispatched_at'       => $incident->dispatched_at?->toIso8601String(),
             'completed_at'        => $incident->completed_at?->toIso8601String(),
-            'responders_assigned' => $incident->responders_assigned,
-            'responders_en_route' => $incident->responders_en_route,
-            'responders_arrived'  => $incident->responders_arrived,
+            'responders_assigned' => $incident->dispatches->whereNotIn('status', ['cancelled', 'declined'])->count(),
+            'responders_en_route' => $incident->dispatches->whereIn('status', ['en_route', 'transporting_to_hospital'])->count(),
+            'responders_arrived'  => $incident->dispatches->whereIn('status', ['arrived', 'completed'])->count(),
 
             'reporter' => [
                 'name'         => $incident->user?->name,
