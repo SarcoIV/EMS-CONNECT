@@ -252,7 +252,9 @@
         <span class="label">🖨️ Incident Batch Report — {{ $total }} incident(s)</span>
         <div class="actions">
             <button class="btn-close" onclick="
-                if (window.history.length > 1) {
+                if (window.opener) {
+                    window.close();
+                } else if (window.history.length > 1) {
                     window.history.back();
                 } else {
                     window.location.href = '/admin/incident-reports';

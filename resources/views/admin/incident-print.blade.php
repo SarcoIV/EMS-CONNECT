@@ -422,7 +422,9 @@
         </span>
         <div class="actions">
             <button class="btn-close" onclick="
-                if (window.history.length > 1) {
+                if (window.opener) {
+                    window.close();
+                } else if (window.history.length > 1) {
                     window.history.back();
                 } else {
                     window.location.href = '/admin/incident-reports';
@@ -542,31 +544,6 @@
                     <div class="field-label">Phone Number</div>
                     <div class="field-value">{{ $incident['reporter']['phone_number'] ?? '—' }}</div>
                 </div>
-            </div>
-        </div>
-
-        {{-- ── RESPONSE SUMMARY ─────────────────────────────────── --}}
-        <div class="section">
-            <div class="section-title">📊 Response Summary</div>
-            <div class="field-grid field-grid-3">
-                <div>
-                    <div class="field-label">Responders Assigned</div>
-                    <div class="field-value">{{ $incident['responders_assigned'] ?? count($incident['dispatches'] ?? []) }}</div>
-                </div>
-                <div>
-                    <div class="field-label">Responders En Route</div>
-                    <div class="field-value">{{ $incident['responders_en_route'] ?? '—' }}</div>
-                </div>
-                <div>
-                    <div class="field-label">Responders Arrived</div>
-                    <div class="field-value">{{ $incident['responders_arrived'] ?? '—' }}</div>
-                </div>
-                @if(!empty($incident['assigned_admin']))
-                <div>
-                    <div class="field-label">Handled By (Admin)</div>
-                    <div class="field-value">{{ $incident['assigned_admin']['name'] }}</div>
-                </div>
-                @endif
             </div>
         </div>
 
